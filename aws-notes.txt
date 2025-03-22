@@ -1,3 +1,144 @@
+==============
+General
+==============
+
+Shared Responsibility Model
+  - what does user control vs AWS
+    - On Premises -> Datacenter Hosted -> Infrastructure as a Service -> Platform as a Service -> Software as a Service
+  - User is responsible for security ON the cloud
+    - client-side stuff, operating system, firewall, file system, data, encryption, etc.
+  - AWS is responsible for security OF the cloud
+    - AWS software, infrastructure, storage, etc.
+
+Availability
+  - High Availability
+    - Ensure performance for higher than normal period
+      - period can be big or bigger
+      - If something fails, it can quickly be replaced
+      - replacement might make users log in again, for instance, but that's OK.
+
+  - Fault Tolerance
+    - ensure system keeps working through failure
+      - Like if above example didn't make user log in again. Redundancy is a good tool here.
+
+  - Disaster Recovery
+    - What to do if HA/FT fail
+    - pre-planned and documented processes
+    - backups stored elsewhere from main storage
+
+Public vs Private Services
+  - Refers to networking and where you can access from
+  - Private services can't be accessed from outside VPC (not connected to VPC)
+  - Private Zone is like a home network, things inside can talk to stuff that things outside can't
+    - VPCs are inside Private Zone
+  - "AWS Public" zone is between public internet and VPC
+    - Not inside public internet, but connected to it.
+    - S3 for instance is here
+    - You use public internet to get to AWS Public zone, which routes your requests internally
+  - VPN can connect private-to-private network directly to private zone (edge case, eg on premises)
+  - Internet Gateway can allow private zone stuff to access internet, or go directly to AWS Public zone for s3 queries, etc.
+    - EC2 instance can have a public IP for instance.
+      - Projects EC2 into Amazon Public Zone
+
+Global Infrastructure
+  - Regions -> Edge Locations
+    - Edge locations are good for netflix, for instance. Better performance.
+  - Regions give
+    - Isolated fault domain
+    - Geopolitical / legal separation
+      - Different laws might apply
+    - control; you might expand infra into a different region for better performance
+  - Availability Zones
+    - isolated hardware
+    - architecture can distribute between them for region resiliance
+
+
+==============
+VPC
+==============
+
+- Virtual network
+- Created within one region and one account
+- by default, private and isolated from public AWS zone and other VPCs
+- VPC CIDR defines range of IPs in use
+- Subdivisions of VPC (Subnets) are each located in 1 AZ
+
+
+- Default VPC is a pre-configured thing that we don't use
+  - only one per region per account
+  - CIDR is 172.31.0.0/16
+  - One subnet per AZ in region, /20 size
+    - plenty of spare room
+  - Internet gateway, Security Group, NACL created
+  - Anything placed in default subnet gets a public IP. Different from Custom VPC
+  - can be deleted / recreated
+
+
+==============
+Cloudformation
+==============
+
+Does cloud stuff based on config file
+  - In YAML (maybe json?), Description field, if used, must directly follow AWSTemplateFormatVersion
+  - Metadata field controls UI among other things
+  - Parameters add options for user to select when using CFN UI
+  - Mappings makes lookup tables
+  - Conditions are a thing
+  - Outputs are like, what is the resulting ec2 id and stuff, probably goes in a log somewhere
+
+CFN templates create stacks (a template can start many stacks). Stacks make stuff (ec2 instance, etc.)
+  - Deleting stack deletes the stuff
+  - Template -> logical resource (stack) -> physical resource (stuff)
+
+
+==============
+Route53
+==============
+
+Globally resillient, no region
+
+ 
+Register Domains
+  - Has relationships with major domain registries, which manage top level domains as vested by IANA
+  - Registration process:
+    - First, check with top level organization if domain is available
+    - Create zonefile (database for domain with DNS info)
+    - Allocate nameservers (4 per zone) - this is a "hosted zone"
+      - Tell top level org about these. They add nameserver records that communicate with hosted zone
+
+Host Zones (managed nameservers) and general DNS flow
+  - Can be public or private (linked to VPC)
+  - stores records
+    - nameserver records
+      - "amazon.com" in the .com zone points to servers in the amazon.com zone
+      - root zone similarly points to .com zone
+    - A & AAAA records
+      - in amazon.com zone, the host/name of www (subdomains may or may not be hosts) might map to an ip address.
+        - CNAMES can point multiple domains to same host/name (NOT DIRECTLY TO IP)
+      - A maps to ipv4, AAAA maps to ipv6
+        - usually create both for client compatibility
+    - Cname
+      - see above
+    - MX
+      - routes emails to servers
+        - A record for "mail"
+        - MX record for "mail"
+        - another MX record for "mail.stuff."
+          - dot on right means it's fully qualified and can point outside zone
+            - maybe a different mail service that the zone owner likes better
+        - mail server sees to: stuff@gmail.com
+          - queries gmail.com for MX records
+          - resolves priority (lower # is higher prio) 
+          - gets hostname, then has to query for IP
+    - TXT
+      - arbitrary, can be used to prove to google for instance that you own the domain you say you do
+        - other patterns exist, but the key is only the owner can add stuff and that helps
+  - TTL
+    - Walking the above tree takes time, but you get an authoritative answer for what IP to hit
+    - This answer can come with a TTL, which allows resolver server (like 8.8.8.8, for instance) to cache answer (now non-authoritative)
+   
+
+
 =========================
 EBS - Elastic Block Store
 =========================
@@ -182,6 +323,29 @@ log group is a container of log streams
 Cloudwatch
 =========================
 
+
+Has UI, CLI, and API interfaces (i imagine most services do)
+
+Metrics
+  - a metric is a time-ordered set of data points
+    - Dimensions are used to identify
+      - EC2 InstanceId could be a dimension, but so could InstanceType. Depends what they think someone might want to look at
+      - can't add dimensions to native metrics, only custom
+  - some things are automatically gathered (ec2 cpu usage)
+  - some external things need Cloudwatch agent to add metrics
+
+Logs
+  - same same but different
+
+Events
+  - can perform actions based on metrics
+  - can perform actions at a certain time
+  - can for instance send an email based on an alarm
+
+Namespace
+  - custom for external data
+  - "AWS/EC2" (for instance) for native things
+
 logs API calls and aws activities as cloudtrail events
   - can be action taken by user, role, or service
   - stored 90 days by default, free
@@ -268,6 +432,9 @@ Security
     - can block
       - everything
       - things granted by new ACLs
+      - things granted by all ACLs
+      - things granted by new policies
+      - things granted by all policies
 
 
 
