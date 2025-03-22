@@ -1,0 +1,278 @@
+=========================
+EBS - Elastic Block Store
+=========================
+
+- Storage attached to ec2 instance 
+
+GP (General Purpose)
+  - speed based on size
+
+GP2: credit bucket architecture
+initial credits
+can burst, refills at base 100 credits/sec + 3 per gb
+
+GP3: base 3000 iops, can pay for more
+  - simpler, max 4x faster, cheaper
+  - extra speed added manually
+
+
+
+IO (Provisioned IOPS)
+  - speed independent of size
+  - for low latency + consistency
+
+
+
+HDD
+  - slow, cheap
+
+st1: Throughput Optimized
+  - max 500MB/s
+    - 40MB/s/tb base
+    - 250MB/s/tb burst
+  - bucket system like gp2, base + burse
+  - for big data
+
+sc1: cold
+  - cheapest, for archives
+  - max 250MB/s
+    - 12MB/s/tb base
+    - 80MB/s/tb burst
+
+
+=========================
+EBS Snapshots
+=========================
+
+- Moves from EBS' availability zone resilience to S3 (region resilient)
+- Incremental (think diffs)
+- can be copied to other regions, can restore volumes
+- restores are lazy, performance can suffer soon after restore
+- FSR Fast Snapshot Restore costs extra, avoids laziness and you can have 50 per region
+  - can just force the reads manually instead
+- Billed GB/month
+- snapshots only billed USED data on volume
+
+
+=========================
+IAM
+=========================
+
+Identities are IAM users, IAM groups (sort of), and IAM roles 
+
+Identity policies are attached to Identities
+
+ARN
+  - unique identifers (unique within account)
+    - most things unique across account + region
+    - some things like IAM users unique within account
+    - some things like s3 unique globally
+  - slightly varied format
+    - arn:aws:service:region:account-id:resource-id
+    - arn:aws:service:region:account-id:resource-type/resource-id
+    - arn:aws:service:region:account-id:resource-type:resource-id
+  - "aws" is always the same for commercial aws (not government, etc)
+
+Policy document (config) has statements with
+  - action
+    - "servicename:action", also can be specific action or list of them, including wildcards
+  - resource
+    - same as above, but instead of servicename:action, arn is used
+  - effect 
+    - allow or deny, conflicts are resolved in priority order
+      - deny
+      - allow
+      - default is deny
+  - optional Sid
+
+Identity can have multiple policies
+  - Someone can have 2 or more policies attached to them, and be in a group with another policy attached
+    - same rules apply. If the group is explicitly denied, the user can't access it even if their personal roles specifically allow it.
+
+Inline policies are not best practice
+  - have to change it everywhere it's applied
+  - can be good for exceptions when one identity needs special treatment
+Managed Policy instead
+  - create policy object and assign it to many things
+
+IAM users are an identity used for long term AWS access (people, apps, service accounts)
+  - if you can point to a named thing that needs access, it probably wants to have a user
+  - Principal is the thing trying to authenticate as a user
+
+5000 Users per account
+  - for big companies, roles & identity federation can work
+User can be in 10 groups
+
+IAM Groups are containers for users
+  - you cannot log into a group
+  - like users, groups can have inline or managed policy attached
+    - managed policies can be AWS-managed (built-in) or customer managed (custom)
+  - no limit to how many users in group
+  - no default "all users" group
+  - no groups nested in groups
+  - 300 groups limit
+  - resource policy can't grant access to a group
+    - they aren't true identities
+
+IAM roles
+  - temporary, a hat you put on for a short job
+    - temp credentials are given via STS
+  - roles have Trust policy and Permissions policy
+    - Trust policy specifies who can assume role
+      - can be users, services, can be used anonymously
+    - Permissions policy specifies what permissions the role has
+  - use cases
+    - give aws services like lambda permission to stop ec2 instances or whatever
+    - emergency role for break glass scenarios
+    - existing identity provider (web identity federation)
+      - no aws credentials stored in application
+    - > 5000 staff
+    - cross-account, give other account permissions
+  - service-linked role
+    - predefined role linked to an aws service
+    - can't delete unless service is no longer using it
+    - PassRole action permissions let you pass service-linked roles to other services
+      - When an AWS service needs to assume a role, a user must have iam:PassRole permissions to pass that role to the service.
+
+
+=========================
+Organizations
+=========================
+
+Groups accounts
+  - subgroups under Organizational Root are Organizational Units
+    - can be nested
+
+The account that makes the Organization is the management/master/payer account
+  - can't be restricted
+  - can invite accounts to join org
+    - those accounts go from being standard accounts to member accounts
+      - consolidated billing: Billing passes through to payer account
+        - consolidates volume discounts
+
+can create accounts directly in organizations
+best practice is that only one account is logged into (maybe master acct, maybe not)
+  - other accounts have roles this account can log into (role switching)
+SCPs manage permissions for member accounts
+  - can be attached to accounts, OUs, or Org root
+  - inherit down
+  - can't affect management account
+  - can indirectly restrict account root user (not usually possible)
+  - don't grant permissions, only defines what COULD be allowed
+    - default SCP is FullAWSAccess
+      - doesn't actually grant permissions, identity policies still needed
+
+
+=========================
+Cloudwatch
+=========================
+
+Public zone service
+Regional
+log = info + timestamp
+many aws services are integrated by default
+log stream is a sequence of log events from the same source
+log group is a container of log streams
+  - settings are set here, like retention settings
+  - can generate metrics from log data
+    - looks for patterns, increments metric, can trigger alarms
+
+
+=========================
+Cloudwatch
+=========================
+
+logs API calls and aws activities as cloudtrail events
+  - can be action taken by user, role, or service
+  - stored 90 days by default, free
+  - can be 1 of 3 kinds of events
+    - management events
+      - creating/terminating instances, create vpc
+      - enabled by default
+    - data events
+      - objects added to s3, lambda invoked
+      - not enabled by default because it's a lot!
+    - insight events
+
+can create trails for customization
+  - logs events in a region
+  - can be configured to log global service events
+    - enabled by default
+    - consolidated into us-east-1 specifically
+  - can be all-region, which is basically just one in each region operating as one logical trail
+    - so changes to configuration will apply to all regions and new regions are added automatically
+  - can be stored in S3 as json
+  - can be stored in Cloudwatch Logs as well
+    - search through, use metric filters
+  - you can make an organization trail using the org management account
+    - for consolidation
+
+There is a delay!
+  - within 15min usually
+
+
+=========================
+AWS Control Tower
+=========================
+
+Orchestrates organizations and other services to set up a multi-account environment
+
+Landing Zone
+  - has home region
+  - uses organizations, AWS Config, Cloudformation, etc. to work
+  - like organization, has management account
+  - sets up SSO, centralized logging
+  - creates 2 OUs
+    - Foundational "security"
+      - creates 2 accounts
+        - Audit
+        - Log archive
+          - users who need all logging info
+    - Custom "sandbox"
+
+Guard Rails
+  - 3 types: Mandatory, Strongly Recommended, Elective
+  - Function in 2 ways
+    - Preventative: uses SCP to stop things from happening
+    - Detective: uses AWS Config to detect when things happen
+      - clear, in violation, or not enabled
+
+Account Factory automates and standardizes new account creation
+  - guard rails can be auto applied
+  - account admin given to named user
+  - configure network like ip ranges
+  - accounds can be deleted
+  - can be integrated into a business' SDLC
+
+
+=========================
+S3
+=========================
+
+Security
+  - Private by default
+  - Bucket policies
+    - type of resource policy
+    - how you give access to something to identities outside your account, since you can't attach identity policies to them
+    - can grant access to anonymous principals
+    - statements look like Identity policy's, with additional Principal field
+    - can block by conditions like matching IP, uses MFA, more
+  - Access Control List
+    - Legacy, not recommended
+    - Subresource (like object is to bucket)
+      - can be attached to object or bucket
+    - inflexible
+      - no conditions
+  - Block Public Access
+    - apply only to anonymous principal
+    - can block
+      - everything
+      - things granted by new ACLs
+
+
+
+
+
+
+
+
