@@ -433,8 +433,156 @@ Security
       - everything
       - things granted by new ACLs
       - things granted by all ACLs
-      - things granted by new policies
-      - things granted by all policies
+      - things granted by new resource/access point policies
+      - things granted by all resource/access point policies
+  - Access point
+    - Intermediary between principal and bucket
+    - can add permissions
+    - can access directly from within vpc
+
+Static Website Hosting
+  - need to point to an index and error page
+  - if you want to use custom domain, bucket name needs to match
+  - good for offloading image serving, etc. from ec2
+
+Object versioning
+  - controlled at bucket level
+  - can be enabled and suspended, but cannot be disabled
+    - suspending and deleting existing versions manually is kinda like disabling
+  - does what you expect, stores multiple versions
+  - version number is called "id", compared to the object "key" (like a filename)
+  - can request specific version by ID
+  - when we "delete" an object and don't give an ID, the current version becomes a delete marker (hides all versions)
+    - can delete the delete marker
+    - specifying id does actually delete the version
+  - MFA Delete
+    - must use MFA to delete versions and to suspend versioning (or enable it)
+
+Perforance Optimization
+  - Single PUT upload can be unreliable
+    - needs to restart upload if connection drops
+    - limited to 5GB, which is already ridiculous
+  - Multipart Upload
+    - minimum size is 100MB
+    - 10000 max parts between 5mb and 5gb (except last remainder part)
+    - each part can be restarted
+    - faster
+  - Transfer Acceleration
+    - helps problem of public internet and ISPs tossing our upload all over the place before it gets to S3 instance we want
+    - gets to closest AWS edge location via public internet, then tunneled via AWS-controlled network straight where it goes
+    - off by default
+    - bucket name must be dns compatible, with no periods
+    - more benefits as distance increases between uploader and destination bucket
+
+Encryption
+  - Buckets are not encrypted. Objects are.
+    - each object can use different encryption settings
+  - encryption-in-transit is used, can't see inside the tunnel
+    - some exceptions
+  - client-side encryption-at-rest
+    - just upload some encrypted data lol
+    - no longer supported by itself, everything is encrypted
+      - of course, they can't prevent you from doing both
+  - server-side encryption-at-rest
+    - unencrypted objects inside encrypted tunnel are encrypted by S3 when they get there
+    - 3 types
+      - SSE with S3-Manged keys (SSE-S3)
+        - default
+        - you provide plaintext object and S3 makes a key
+        - no options, invisible
+        - per-object key is further encrypted by master S3 key, plaintext discarded and cyphertext per-object key saved
+        - can't stop S3 full admin from seeing all data
+          - might be illegal re: medical records, etc.
+          - no Role Separation
+        - uses AES-256 encryption
+      - SSE with keys in KMS (SSE-KMS)
+        - uses KMS key that you can configure
+        - this takes the place of the master S3 key above
+        - have logging and auditing against key using Cloudtrail, etc.
+      - SSE with Customer-provided keys (SSE-C)
+        - you provide key and object
+        - s3 encrypts object and hashes key + object, attaches hash to object
+        - s3 discards key
+        - managing key creation is good for high regulatory environments
+
+
+=========================
+Key Management System
+=========================
+
+Regional and Public
+  - multiregion keys are supported, off by default
+Create, store, and manage keys for cryptography
+  - both symmetric and asymmetric
+Perform encrypt, decrypt, etc.
+Keys never leave the service
+Compliant with FIPS 140-2 level 2
+KMS Keys
+  - formerly CMKs
+  - contain id, creation date, key (resource) policy, description, and state
+  - container for actual key data
+    - can be generated or imported
+    - up to 4kb of key data
+  - granular permissions: decrypt, create, encrypt, etc. are separate
+  - Support rotation, on by default
+    - rotation mostly invisible
+    - old versions are kept so you can decrypt pre-rotation encrypted files
+  - can alias, so that you can swap keys
+Data Encryption Keys
+  - DEKs use KMS Keys
+    - linked to KMS key
+  - work on > 4KB
+  - KMS doesn't operate on DEKs, it gives it to you to work with
+    - plaintext
+    - cyphertext
+      - can be used with linked KMS key to get plaintext DEK
+    - workflow:
+      - encrypt data using DEK plaintext
+      - discard plaintext DEK
+      - store encrypted DEK with data
+Key Policy
+  - every key has one
+  - unlike other services, keys don't automatically trust account they're in
+    - usually, you explicitly grant access to the account then use IAM to grant usage rights
+    - in higher security situations, you might skip IAM and grant permissions directly in key policy
+  - there's another thing called grants
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
