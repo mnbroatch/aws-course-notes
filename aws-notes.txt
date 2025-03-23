@@ -575,7 +575,87 @@ Storage Classes
     - good for long lived data with unpredictable usage spikes
 
 Lifecycle Configuration
-  - 
+  - applied to bucket or group of objects (prefix, tags)
+  - rules consist of actions
+    - can't trigger based on access patterns
+    - 2 types
+      - Transition actions change storage class (say, move to IA after 30 days)
+        - can transition from more expensive -> less  
+          - Intelligent Tiering is between IA and OneZone IA
+          - weird exception: can't transition from OneZone IA to Glacier Instant Retrieval
+        - remember that transitioning small objects could incur cost bc min sizes
+        - Transitioning from Standard requires object to be in Standard for 30 days
+          - can still transition manually tho
+          - weirdness: doing so to Standard-IA or OneZone-IA starts another 30 day timer until you can move down to glaciers
+            - BUT ONLY IF YOU WANT TO DO IT WITH ONE RULE??
+      - Expiration actions delete after a while
+
+Replication
+  - cross-region or same region replication
+  - can replicate to bucket in other account
+      - destination bucket needs to have bucket policy to trust source account
+  - Replication configuration
+    - destination bucket
+    - IAM Role to use
+    - all objects or a group of them (prefix, tags)
+    - optionally change storage class
+    - ownership (what account owns object)
+      - might want to make this the destination account if cross-account replication
+    - RTC (replication time control)
+      - Speeds up to < 15min vs "best effort"
+      - costs extra
+  - not retroactive by default
+    - can configure "batch replication" to replicate existing objects
+  - must enable versioning on source and destination
+  - one directional by default
+  - can handle encrypted objects, though extra config needed for SSE-KMS.
+  - source bucket needs permissions for objects
+  - won't replicate changes to lifecycle config, tags by default, other system events
+  - can't replicate Glacier Flexible or Glacier deep archive
+  - no delete markers by default
+  - use cases for same Region 
+    - resilience where regulations means data stays in one region
+    - could use to aggregate multiple buckets' logs
+    - sync some prod and test data
+  - use cases for cross Region 
+    - global resilience
+    - reduce latency
+
+Presigned URL
+  - to create, someone with permissions supplies credentials, bucket + object, expiration time
+  - allows unauthenticated request for object upload/download
+  - when given the URL, unauthenticated user operates on object as the person who generated it
+    - permissions are NOT baked in at generation
+  - this is how you would have a website with videos only for logged in users
+    - web server asks s3 for presigned url to send to logged in user
+    - otherwise, videos would have to be public
+  - you can generate a useless presigned url by not having access to the specified object
+    - permissions can change shortly after to make it useful
+  - don't generate using an IAM role (temp role credentials could expire at unpredictable times and break the URL)
+
+S3 Select and Glacier Select
+  - use sql-like statements to retrieve parts of objects
+    - data stored as JSON, CSV, others
+  - because client side filtering isn't cost-effective for big objects
+
+S3 Events
+  - older feature, eventbridge might be better
+  - Can be delivered to SNS topics, SQS queues, lambdas
+  - can trigger on put, post, copy, CompleteMultiPartUpload, deletes, restores, some replication stuff
+  - Event Notification Config
+  - lambda, etc. needs resource policy to allow S3 principal to interact
+    - weirdly no way to edit lambda resource policy via UI?
+
+S3 Access logs
+  - log accesses of source bucket to some other target bucket
+  - best effort, few hours
+  - happens through "log delivery group"
+    - built-in service principal
+  - target bucket needs ACL to accept from LDG
+    - bucket policies can't specify built-in AWS service principals, go figure
+  - newline-delimited records with space-delimited attributes
+  - logging configuration sets prefix for logfile
+  - need to manually delete
 
 
 
