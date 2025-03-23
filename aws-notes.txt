@@ -504,6 +504,79 @@ Encryption
         - s3 encrypts object and hashes key + object, attaches hash to object
         - s3 discards key
         - managing key creation is good for high regulatory environments
+  - Bucket Keys
+    - without bucket keys, encryption process for SSE-KMS requires a lot of calls to KMS, multiple per upload
+      - There is throttling with KMS keys, too, so it isn't just an efficiency thing
+    - KMS key is used to create a time-limited bucket key, which can be used to generate DEKs per 
+      - this works because the bucket key is re-deriveable from the KMS key.
+      - Only the KMS key is needed to decrypt
+      - Kinda seems the same as caching the KMS key in memory, but transparently with best practices
+      - Fewer KMS Cloudtrail logs, and they will have the bucket ARN, not object ARN
+  - Replicating plain text objects to a bucket with bucket key or default encryption can change the "ETAG"
+
+Storage Classes
+  - S3 Standard
+    - Duplicated across at least 3 AZs
+    - "11 9's" of durability, 1 lost object every 10,000 years
+    - replication is checked for accuracy with CRCs
+    - if an object is durably stored like this, HTTP/1.1 200 OK status.
+    - pay for storage gb/m; transfer OUT per gb, not in; and price per 1000 requests
+    - can be made public, no minimum duration or size
+    - first byte latency in ms, fast 
+    - balanced and good for frequently accessed data that is important and non-replaceable
+  - S3 Standard-IA (Infrequent Access)
+    - cheaper to store, but has retrieval fee
+      - retrieval fee (basically an access fee) but not transfer fee could apply to data that never leaves AWS (accessing a log for instance)
+    - minimum duration billed: 30 days
+    - minimum billed object size: 128KB
+    - good for few accesses of important, irreplaceable data
+      - once per month?
+  - S3 OneZone-IA (Infrequent Access)
+    - Like above without replication
+    - cheaper still
+    - for data that can be replaced
+    - Basically never fails but you wouldn't bet your business on it
+  - S3 Glacier-Instant
+    - Like Standard-IA, but cheaper to store, more expensive to access, and 90 day minimum
+    - good for data accessed once per quarter
+  - S3 Glacier-Flexible
+    - Formerly S3 Glacier
+    - 1/6 the cost of S3 standard
+    - not immediately available
+    - can't be made public, including static website hosting
+    - retrieval process needs to be done in advance of accessing
+      - temporarily puts them in S3 Standard-IA until accessed
+      - 3 types of retrieval
+        - Expedited: 1-5 min
+        - Standard: 3-5 hours
+        - Bulk: 5-12 hours
+        - Faster = more expensive (duh)
+    - 40kb min size
+    - 90 day min duration
+  - S3 Glacier-Deep Archive
+    - cheaper yet
+    - like above but 180 day min
+    - Standard retrieval: 12hr
+    - Bulk retrieval: 48hr
+    - good for regulatory archives, stuff that shouldn't ever have to be retrieved but needs to be kept
+    - good as secondary backup
+  - S3 Intelligent Tiering
+    - 5 levels kinda map to above
+      - Frequent
+      - Infrequent
+      - Archive Instant
+      - Archive 
+      - Deep Archive 
+    - monitors usage and moves from tier to tier intelligently
+    - Archive and Deep Archive require application changes and has same "dethawing" process
+      - They are optional
+    - Tiers higher than Archive do not incur retrieval fees
+    - monitoring and automation fee instead
+    - good for long lived data with unpredictable usage spikes
+
+Lifecycle Configuration
+  - 
+
 
 
 =========================
