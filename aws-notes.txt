@@ -64,7 +64,7 @@ VPC
 - Subdivisions of VPC (Subnets) are each located in 1 AZ
 
 
-- Default VPC is a pre-configured thing that we don't use
+Default VPC is a pre-configured thing that we don't use
   - only one per region per account
   - CIDR is 172.31.0.0/16
   - One subnet per AZ in region, /20 size
@@ -72,6 +72,48 @@ VPC
   - Internet gateway, Security Group, NACL created
   - Anything placed in default subnet gets a public IP. Different from Custom VPC
   - can be deleted / recreated
+
+Design considerations
+  - are there networks we have to avoid
+    - other vpcs, cloud, on-premises, partners/vendors
+  - what size range
+    - vpcs can be between /28 (16 ips) and /16 (65536 ips)
+  - how many ranges
+    - how many subnets
+      - how many AZs?
+        - three per region seems good, plus a buffer for a total of 4 subnets due to AZs
+      - how many tiers? a common pattern is
+        - public web tier
+        - private with gateway application tier
+        - private with no gateway database tier
+        - let's add a spare
+      - So, 16 subnets per account. if starting with /16 vpc, this would be /20 each subnet.
+        - starting with /18 would make /22 subnets
+      - how many accounts?
+        - Prod, dev, general, spare
+      - we need 48 ip ranges
+  - the class lost me here. it started talking about having 4 vpcs per region/account but also all AZs and all Tiers as subnets in 1 vpc
+    - not sure where the 4vpcs come from. just being big?
+  - don't forget we need a vpc per region
+  - try to predict the future
+
+Custom VPC
+  - isolated; nothing in or out without explicit permissions
+  - hybrid networking: on-premises + cloud
+  - 2 hardware tenancy setups
+    - Default
+      - shared hardware
+      - can choose per-resource to have dedicated hardware
+    - Dedicated
+      - can no longer choose shared hardware
+      - more expensive
+  - everything gets private IP, public ips are given when we need them
+  - one primary IP4 CIDR block
+    - up to 5 (more with support) secondary cidr blocks
+      - these are if you run out of space, essentially
+
+      
+
 
 
 ==============
@@ -435,10 +477,6 @@ Security
       - things granted by all ACLs
       - things granted by new resource/access point policies
       - things granted by all resource/access point policies
-  - Access point
-    - Intermediary between principal and bucket
-    - can add permissions
-    - can access directly from within vpc
 
 Static Website Hosting
   - need to point to an index and error page
@@ -657,6 +695,32 @@ S3 Access logs
   - logging configuration sets prefix for logfile
   - need to manually delete
 
+S3 Object Lock
+  - Existing buckets need support to turn on
+  - versioning required; individual versions are what is locked
+  - means no overwrites or deletes of that version
+  - 2 ways it manages retention, both or either (or none) can be active
+    - Retention Period
+      - specify days and years to retain.
+      - 2 modes
+        - Compliance Mode
+          - retention period / lock itself cannot be reduced, even by account root user!
+        - Governance Mode
+          - similar, but you can get special permissions to remove the lock
+    - Legal Hold
+      - Not time-based, just on or off
+      - For when a version is critical
+  - Bucket default settings are possible in addition to individual vesion settings
+
+- S3 Access Points
+  - Intermediary between principal and bucket
+    - simplifies access management
+      - instead of monolithic bucket policies, different groups with different permissions can access same bucket
+  - can be set to be accessed only directly from within vpc
+    - needs vpc endpointin vpc
+  - for some reason CLI command is important to remember: "aws s3control create-access-point"
+  - access points have unique DNS addresses
+  - common pattern is for bucket policy to allow everything from a given access point, then use access point policies to actually manage permissions
 
 
 =========================
