@@ -145,8 +145,48 @@ Subnets
       - Do we give resources a public ipv4 address by default?
       - Do we give resources a ipv6 address?
 
-Routing
-  - 
+VPC Router
+  - every VPC has one
+  - network + 1 ip
+  - Highly available, runs in all the AZs the VPC uses
+  - routes traffic between subnets
+  - controlled by Route Tables
+    - can be associated with many subnets
+    - each subnet has one
+      - default one is the VPC-level Main Route Table
+    - list of routes, which have destinations which can be ip ranges (or /32 for 1 ip address)
+      - if multiple routes match incoming packet, most specific applies
+      - each route has a "target", either "local" or an AWS Gateway
+        - local means within VPC
+    - each route table has the "local route"
+      - matches VPC CIDR range with target "local"
+      - if enabled, also has ipv6 local route
+      - LOCAL ROUTE ALWAYS TAKES PRIORITY
+    - then what are non-local routes good for? some examples
+      - traffic out to internet
+        - instead of default internet gateway, could route to vpn
+      - necessary for cross-vpc communication
+      - necessary for private subnet to send traffic out to internet
+
+
+Internet Gateway
+  - Region Resillient
+  - IGW can have 1 or 0 VPCs and vice versa
+  - runs in AWS Public zone, coordinates traffic to/from internet or public zone
+  - steps
+    - create IGW
+    - attach to VPC
+      - now we can use it in route tables
+    - create and attach custom route table to subnet
+      - create default routes 0.0.0.0/0 and ::/0 to the IGW
+  - whenever a resource has a public ip, the internet gateway actually maintains the map to the private IP
+    - ONLY V4. V6 is natively publically routeable
+    - changes packet destination or source ip to public ip
+    - this is why instance OS doesn't know public ip address
+
+Bastion Host = Jumpbox
+  - instance in subnet
+  - manage routing, sometimes the only way into highly secure private VPCs
 
       
 
