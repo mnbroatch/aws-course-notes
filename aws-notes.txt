@@ -92,10 +92,11 @@ Design considerations
       - how many accounts?
         - Prod, dev, general, spare
       - we need 48 ip ranges
-  - the class lost me here. it started talking about having 4 vpcs per region/account but also all AZs and all Tiers as subnets in 1 vpc
+  - the class lost me here re: the A4L example. it started talking about having 4 vpcs per region/account but also all AZs and all Tiers as subnets in 1 vpc
     - not sure where the 4vpcs come from. just being big?
   - don't forget we need a vpc per region
-  - try to predict the future
+  - try to predict the future (?)
+    - is there more to that than "leave spare room"
 
 Custom VPC
   - isolated; nothing in or out without explicit permissions
@@ -108,9 +109,44 @@ Custom VPC
       - can no longer choose shared hardware
       - more expensive
   - everything gets private IP, public ips are given when we need them
-  - one primary IP4 CIDR block
+  - one primary IP4 CIDR /16 block
     - up to 5 (more with support) secondary cidr blocks
       - these are if you run out of space, essentially
+  - one optional IP6 /56 CIDR block
+    - can't choose block, can supply ones you already own
+  - DNS
+    - provided by Route53
+    - dns ip is base ip + 2
+    - VPC-level options
+      - EnableDnsHostnames
+        - because ips can be dynamic and this will resolve correctly
+          - why did I not know this while working on reply-guy?
+      - EnableDnsSupport
+        - enables or disables DNS resolution
+
+Subnets
+  - AZ Resilient, inside 1 AZ
+  - ip4 cidr is subset of vpc cider
+    - optional ip6 /64 range, 1/256th of the VPC ip6 range
+  - subnets in a vpc can't overlap
+  - by default, can freely communicate between subnets within a vpc
+  - reserved addresses
+    - first is vpc itself, network address
+    - first + 1 is vpc router
+    - first + 2 is dns address, helps use hostnames internally and externally
+    - first + 3 is reserved for future use
+    - last is Network Broadcast address which talks to every host
+      - broadcasting is not actually useable in VPC
+  - for every vpc there is a DHCP option set
+    - DHCP assigns IP addresses
+    - can't edit options, can create new option set instead
+    - applies to all subnets in vpc
+    - options
+      - Do we give resources a public ipv4 address by default?
+      - Do we give resources a ipv6 address?
+
+Routing
+  - 
 
       
 
