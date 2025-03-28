@@ -2,6 +2,22 @@
 General
 ==============
 
+Firewalls in general
+  - 2 kinds
+    - Stateless
+      - focuses on inbound and outbound
+      - for https, say, client uses random port to connect to server's known 443 port.
+        - "connection" is 2 requests: request and response
+        - so, 2 rules needed: inbound and outbound, inverse of each other
+          - server probably has to allow inbound traffic from all random ports on 443
+          - from client's perspective, request is outgoing and response is incoming
+          - vice versa for server
+    - Stateful
+      - focuses on request and response
+      - smart enough to know that if request is allowed, response should be
+        - knows that a given response is related to request, so only request rule is necessary
+        - automatically opens response port when it makes a request
+
 Shared Responsibility Model
   - what does user control vs AWS
     - On Premises -> Datacenter Hosted -> Infrastructure as a Service -> Platform as a Service -> Software as a Service
@@ -72,6 +88,7 @@ Default VPC is a pre-configured thing that we don't use
   - Internet gateway, Security Group, NACL created
   - Anything placed in default subnet gets a public IP. Different from Custom VPC
   - can be deleted / recreated
+    - Some things expect it to exist tho
 
 Design considerations
   - are there networks we have to avoid
@@ -841,17 +858,79 @@ Key Policy
   - there's another thing called grants
 
 
+=============================
+Network Access Control List
+=============================
+
+Firewalls for VPC (see General -> Firewalls)
+
+NACL
+  - Stateless
+  - Every subnet has one
+    - connections within one subnet are not filtered
+  - supports explicit allows and denies
+    - Can block bad IPs for instance
+  - supports ip and port ranges
+  - NOT specificity based, but rather the first matching rule applies
+    - * is the fallback, basically the same as using the last allowed rule number
+      - "implicit deny", can't be changed 
+  - managed at vpc level but can be attached (only) to subnets
+  - default NACL allows all, customs are created with deny all 
+  - can't reference logical resources; ips and ranges are all you get!
 
 
+=============================
+Security Groups
+=============================
+
+Security Group
+  - Stateful
+  - implicit deny, explicit allow
+  - No explicit deny: needs NACL to override the useful explicit allow
+  - attached to Elastic Network Interfaces
+  - doesn't attach to instance, attaches to its network interface
+  - supports logical resources including itself and other security groups
+    - can set "source" to another security group's id
+      - matches any source with the other sg attached (kinda weird)
+      - can only reference SGs in same vpc
+      - scales well
+    - can set "source" to same security group's id
+      - anything with sg attached can talk to each other or whatever
 
 
+=============================
+NAT Gateway
+=============================
 
+Network Address Translation
+  - For giving private resource outgoing-only access to the internet
+    - called "outgoing-only" but reponses are still allowed.
+  - changes packets' src or dest ip
+    - like how internet gateway does (static NAT) with public ip addresses being changed to internal instance IP
+    - IP Masquerading: hiding CIDR blocks behind one IP
+      - lets ipv4 addresses conflict without problem as long as the "mask" is unique
+      - breaks incoming access
+  Architecture
+    - App tier vpc has private instances with private IPs, wants to update software
+    - Web tier vpc has NAT Gateway
+    - App tier route table points traffic to nat gateway instead of internet gateway
+    - NAT Gateway records private source IP, other data in translation table
+    - Changes source IP to its own, sends data to Internet Gateway and out
+    - gets reponse, uses translation table to adjust response destination back to private IP
+  - AZ Resilient (deploy into a region)
+    - for region resilience, you need
+      - NG in each AZ
+      - route table pointing at it in each AZ
+  - Managed service, scales to 45Gbps
+  - billed for duration you have NAT Gateway and Data Volume
+  - doesn't work with ipv6
+    - use "Egress Only Gateway" instead
 
-
-
-
-
-
+NAT Instance
+  - instead, can do NAT with EC2 instance
+  - more customizeable
+  - can do port-forwarding
+  - can use security groups instead of just NACLs
 
 
 
