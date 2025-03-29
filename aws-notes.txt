@@ -2,7 +2,34 @@
 General
 ==============
 
-Firewalls in general
+Virtualization
+  - running more than one operating system at a time on a piece of hardware
+  - Apps can't directly access hardware, only OS can because it runs in privileged mode, not user mode
+    - but, only one thing could historically be privileged
+      - 2 early solutions, had to be done in software
+        - Emulated virtualization
+          - guest OSs run in virtual machine
+            - has allocation of cpu, etc.
+          - host OS had a "hypervisor"
+            - what the host thought was the hardware was emulated
+            - hardware calls are sent to the hypervisor, which interfaces with the real hardware using binary translation
+          - performance is slow
+        - Paravirtualization
+          - still has hypervisor
+          - virtual machines run modified OSs (probably linux)
+            - know about and make calls directly to the hypervisor instead of having hypervisor translate fake hardware calls
+      - modern solution: Hardware Assisted Virtualization
+        - CPU knows about virtualization, traps hardware instructions and does them
+          - faster because CPU just does it faster
+            - it has special circuits and stuff
+          - Hypervisor still manages, but doesn't do the nitty gritty
+            - sets up VMs, allocates resources, handles edge cases that CPU can't
+      - moderner solution: Single Route IO Virtualization (SR-IOV)
+        - hardware is virtualization-aware
+          - a network card, say, can split itself into many mini cards, and those can be allocated to guest OSs with no translation
+        - in EC2, this is called "Enhanced Networking"
+
+Firewalls
   - 2 kinds
     - Stateless
       - focuses on inbound and outbound
@@ -933,16 +960,44 @@ NAT Instance
 EC2
 ==============
 
-Virtualization as a service
-  - running more than one operating system at a time on a piece of hardware
-  - Apps can't directly access hardware, only OS can because it runs in privileged mode, not user mode
-    - but, only one thing could historically be privileged
-      - 2 early solutions, had to be done in software
-        - Emulated virtualization
-          - guest OSs run in virtual machine
-            - has allocation of cpu, etc.
-          - host OS had a "hypervisor"
-            - 
+Architecture
+  - Virtualization As a Service
+  - AZ resilient
+  - shared or dedicated hosts
+    - "host" is actual hardware in AWS Datacenter
+    - even shared hosts are isolated, but dedicated might be required by regulations
+  - When instance is deployed to a subnet
+    - it gets assigned a primary Elastic Network Interface in that subnet.
+      - instances can have multiple network interfaces, even in other subnets, but must be same AZ
+    - might connect to EBS
+  - Instance (on shared host) changes host on stop/start or failure (not restart)
+  - Network cards, EBS volumes, instance resources are all in AZ
+    - can't connect ENI from one zone to instance in another for instance
+  - usually instances of same type and generation will share a host
+
+When to use
+  - You have a traditional OS + App compute need
+  - long-running
+  - burst or steady state
+    - many kinds of instances, one will suit your needs
+  - monolithic stack
+    - need certain database running, whatever
+  - easy migration point to the cloud
+  - good for disaster recovery
+    - can recovery using AMIs, architect something with redundancy easily
+  - sorta the default
+
+
+  
+
+
+
+
+
+
+
+
+
 
 
 
