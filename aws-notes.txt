@@ -291,13 +291,9 @@ GP3: base 3000 iops, can pay for more
   - simpler, max 4x faster, cheaper
   - extra speed added manually
 
-
-
 IO (Provisioned IOPS)
   - speed independent of size
   - for low latency + consistency
-
-
 
 HDD
   - slow, cheap
@@ -933,6 +929,20 @@ NAT Instance
   - can use security groups instead of just NACLs
 
 
+==============
+EC2
+==============
+
+Virtualization as a service
+  - running more than one operating system at a time on a piece of hardware
+  - Apps can't directly access hardware, only OS can because it runs in privileged mode, not user mode
+    - but, only one thing could historically be privileged
+      - 2 early solutions, had to be done in software
+        - Emulated virtualization
+          - guest OSs run in virtual machine
+            - has allocation of cpu, etc.
+          - host OS had a "hypervisor"
+            - 
 
 
 
