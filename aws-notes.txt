@@ -2,6 +2,39 @@
 General
 ==============
 
+Storage
+  -Architecture
+    - Direct
+      - on the physical host
+      - fast but ephemeral, goes away when instance moves host, fails, etc.
+      - instance store
+    - Network
+      - highly resilient, survives if host fails, persistent
+      - EBS
+  - Structure
+    - Block Storage
+      - Presented to OS as collection of blocks, no structure
+        - just a colleciton of uniquely addressable blocks
+      - file system is created on top of it
+      - mountable, bootable
+        - most EC2 instances boot from one
+    - File Storage
+      - presented as file share
+      - file system is already built in
+      - not bootable, OS only has high level access to files, not low level access to raw data
+    - Object Storage
+      - abstract
+      - has metadata
+      - flat key/object
+      - scales well
+      - not mountable or bootable
+  - Performance
+    - IO (block) size
+    - IOps
+    - Throughput: IO * IOps
+      - unless there's a throughput cap
+      - sometimes changing IO changes the IOps also
+
 Virtualization
   - running more than one operating system at a time on a piece of hardware
   - Apps can't directly access hardware, only OS can because it runs in privileged mode, not user mode
@@ -305,38 +338,74 @@ Host Zones (managed nameservers) and general DNS flow
 EBS - Elastic Block Store
 =========================
 
-- Storage attached to ec2 instance 
+EBS
+  - Block network Storage attached to ec2 instance 
+    - raw data, instance creates file system on top
+    - lifecycle is independent from ec2 lifecycle, gets attached and detached
+  - Can be encrypted via KMS
+  - Provisioned per AZ
+    - can get toward region resilience by backing snapshot up to S3
+    - then why not replicate that to another region?
+  - Generally one ec2 instance per EBS Volume
+    - multi-attach can be managed but has to work to avoid corruption, overwrites, etc.
+  - Billed GB/mo
 
-GP (General Purpose)
-  - speed based on size
+Volume types:
+  - GP (General Purpose)
+    - types
+      - GP2
+        - 1GB to 16TB
+        - Billing has credit bucket architecture
+            - bucket has capacity of 15MM IO credits
+              - gets that at start
+                - nice for boots / initializations
+              - no credit no IO
+              - IO credit is 16KB
+            - refills at Max(100,  3 * GB of storage) credits/sec
+              - "baseline performance"
+            - initial credits
+            - can do up to 3000 IOps for <1TB volumes
+              - after 1TB, max speed scales as fast as refill so doesn't deplete
+              - caps at 16000 IOps for 5.33TB volume
 
-GP2: credit bucket architecture
-initial credits
-can burst, refills at base 100 credits/sec + 3 per gb
+      - GP3: base 3000 iops 125MiB/s, can pay for more
+        - simpler, max 4x faster, cheaper
+        - extra speed added manually
+        - Best of both worlds between IO1 and GPT2
+    - good for Virtual Desktops, medium sized DBs, low latency apps, boot volumes
 
-GP3: base 3000 iops, can pay for more
-  - simpler, max 4x faster, cheaper
-  - extra speed added manually
+  - IO (Provisioned IOPS)
+    - types
+      - IO1
+        - up to 4x the top throughput as GP (same IOps)
+        - speed independent of size
+        - for low latency + consistency
+      - IO1
+        - speed independent of size
+        - for low latency + consistency
+      - Block Express
+        - up to 4x the top throughput and IOps as IO1 & 2
+    - Per instance limits apply when multiple volumes are attached to an instance
+      - io1 and io2 block express are 260000IOps and 7500MiB/s
+      - io2 is lower
+      - instance type might have its own bottleneck
 
-IO (Provisioned IOPS)
-  - speed independent of size
-  - for low latency + consistency
-
-HDD
-  - slow, cheap
-
-st1: Throughput Optimized
-  - max 500MB/s
-    - 40MB/s/tb base
-    - 250MB/s/tb burst
-  - bucket system like gp2, base + burse
-  - for big data
-
-sc1: cold
-  - cheapest, for archives
-  - max 250MB/s
-    - 12MB/s/tb base
-    - 80MB/s/tb burst
+  - HDD
+    - slow, cheap
+    - can't boot from
+    - 2 relevant types
+      - st1: Throughput Optimized
+        - good for sequential operations, not random access
+          - big data, log processing
+        - bucket system like gp2, base + burse
+          - max 500MB/s
+            - 40MB/s/tb base (refill rate)
+            - 250MB/s/tb burst
+      - sc1: cold
+        - cheapest, for archives
+        - max 250MB/s
+          - 12MB/s/tb base
+          - 80MB/s/tb burst
 
 
 =========================
@@ -987,7 +1056,40 @@ When to use
     - can recovery using AMIs, architect something with redundancy easily
   - sorta the default
 
+Instance Types
+  - Choosing an instance type affects certain things
+    - resources (cpu, ram, etc)
+    - bandwidth (storage and network)
+    - system architecture (arm, x64), vendor (amd, intel)
+    - additional features like a GPU
+  - Categories
+    - General Purpose
+      - default, diverse workloads, balanced resource ratio (ram to cpu, say)
+    - Compute Optimized
+      - High CPU use: ML, Modeling, gaming, processing
+    - Memory Optimized
+      - High RAM use: large in-memory datasets, certain database workflows
+    - Accelerated Computing
+      - Niche uses: hardware GPU, field programmable gate arrays, etc.
+    - Storage Optimized
+      - Fast sequential and random IO
+  - Example instance type name: R5dn.8xlarge
+    - R: instance family
+    - 5: 5th generation
+    - dn: letters mean additional capabilities.
+      - d is SSD storage (for some reason)
+      - n is network storage
+    - 8xlarge: size. like a 8X tee shirt, big!
+    
+Instance Store Volume
+  - Block Storage connected to instance
+  - local, physical
+  - comes with price of instance
+  - have to be attached at launch, not later
+  - many types, some higher end types are D3 at 4.6GB/s, and I3 at 16 
+    - IOps are crazy bigger
 
+      
   
 
 
