@@ -2,8 +2,9 @@
 General
 ==============
 
+
 Storage
-  -Architecture
+  - Architecture
     - Direct
       - on the physical host
       - fast but ephemeral, goes away when instance moves host, fails, etc.
@@ -406,6 +407,25 @@ Volume types:
         - max 250MB/s
           - 12MB/s/tb base
           - 80MB/s/tb burst
+
+  - Encryption
+    - OS doesn't see encryption
+    - can't unencrypt a volume
+    - create encrypted volume initially
+      - KMS key is used
+        - could be default EBS-managed key "aws/ebs"
+        - could be customer-managed KMS key
+          - KMS key creates encrypted DEK and KMS key is used to decrypt that
+            - DEKs are per volume
+            - decrypted DEK is stored in EC2 instance memory
+            - now instance can decrypt volume
+            - snapshots made from this volume (and volumes made from them) also use this DEK
+
+
+
+
+
+
 
 
 =========================
@@ -1089,8 +1109,46 @@ Instance Store Volume
   - many types, some higher end types are D3 at 4.6GB/s, and I3 at 16 
     - IOps are crazy bigger
 
-      
-  
+Networking
+  - Every instance has 1 primary ENI in its subnet, can attach more secondaries (can be in other subnets)
+    - secondaries can be attached/detached
+      - if license is attached to mac address, this can be useful
+    - multiple ENIs can mean multiple security groups
+  - ENI owns things that you might think instance owns
+    - MAC address
+    - primary private IP (comes with dns name that resolves to it)
+    - optional public IP (comes with dns name that resolves to private ip inside VPC, public ip outside)
+    - more secondary IPs
+      - can have one Elastic IP per private IP
+        - will remove regular public IP
+    - IPs change on host change.
+  - security group affects all IPs on interface
+  - can disable source/destination check
+    - setting discards traffic not to or from one of ENI's IPs
+    - needs to be off to function as NAT instance
+  - OS DOESN'T KNOW ABOUT PUBLIC IPv4 ADDRESS
+
+Amazon Machine Images
+  - regional with unique ami ids in each region even for preset ones
+    - can be copied between regions
+  - can't be edited, just create another one
+  - used to launch images
+    - even used to launch preset images
+    - can be AWS- or community- provided (ubuntu is community for instance)
+    - can be commercial (like coming with a windows license)
+    - when you make one, you can make it public, private, or shared with some accounts
+      - these permissions are stored in AMI
+  - consist of image + attached volumes
+    - does not contain volue data, only references them
+    - snapshots are created
+      - used in AMI using block device mapping
+        - maps /dev/xvda (block device), say, to EBS snapshot
+  - at launch, snapshots are made into volumes and volumes are attached to correct block device
+  - optimally, for consistency, you stop the instance before creating an AMI
+
+Purchase Options
+  - 
+
 
 
 
