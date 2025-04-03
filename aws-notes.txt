@@ -1146,10 +1146,44 @@ Amazon Machine Images
   - at launch, snapshots are made into volumes and volumes are attached to correct block device
   - optimally, for consistency, you stop the instance before creating an AMI
 
-Purchase Options
-  - 
-
-
+Purchase Options (launch types)
+  - On-demand
+    - default, how you think it works
+    - per-second billing while instance is running
+      - associated resources may still be charged when instance is stopped, such as storage
+    - could be unavailable if there is a major EC2 failure
+  - Spot
+    - spot price goes up and down, you set maximum price you'll pay
+      - if spot price goes up past your max, your instance is terminated
+    - good for interruptable operations
+    - can come at a huge discount
+  - Standard Reserved
+    - commit to certain amount of usage for 1-3 years
+    - can reserve and not use, wasting money
+    - you can launch instances where you reserve space
+      - either per AZ or per region
+        - AZ reserves capacity, region does not
+    - partial discount on instance that doesn't fit in your reservation
+    - different ways to pay
+      - no upfront
+      - some upfront
+      - all upfront
+      - what you don't pay is billed as per second cost
+  - Scheduled Reserved
+    - 
+  - Dedicated hosts
+    - you pay for the physical host, can launch into at will
+    - have to manage host capacity
+    - why?
+      - might have licensing tied to cpu
+      - stopping and starting instance stays on same host
+  - Dedicated instances
+    - middle ground
+    - hardware isn't shared, but you don't manage host
+    - hourly fee for regions where this is enabled, plus extra fee for instances
+    - why?
+      - regulations
+      - don't have the extra management overhead of dedicated hosts
 
 
 
