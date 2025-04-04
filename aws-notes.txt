@@ -63,6 +63,28 @@ Virtualization
           - a network card, say, can split itself into many mini cards, and those can be allocated to guest OSs with no translation
         - in EC2, this is called "Enhanced Networking"
 
+Containers
+  - virtualization still has issues
+    - OS is duplicated and can take up a bunch of resources
+      - a waste if multiple virtual machines use same OS (which is common)
+  - Instead of hypervisor and multiple OSs, there is a host OS and Container Engine
+  - instead of VM, we use container
+    - still isolated, has its own file system
+    - can run child processes inside
+  - Portable and consistent, can run wherever there's a compatible host OS
+  - can expose ports
+  - Docker is the most popular container engine
+    - Starts with Dockerfile that creates image
+      - each line creates new file system layer in the createdimage
+        - each layer is stored as diff
+        - layers are read only
+      - first line is base image to extend, or from "scratch" (literal string FROM scratch)
+      - last layer is special read/write layer where stuff happens during container running
+      - sharing the read-only layers is fast and cool
+  - Container registry
+    - can upload and download container images
+    - can be public or private
+
 Firewalls
   - 2 kinds
     - Stateless
@@ -128,6 +150,23 @@ Global Infrastructure
   - Availability Zones
     - isolated hardware
     - architecture can distribute between them for region resiliance
+
+Horizontal vs Vertical Scaling
+  - Vertical
+    - just use a bigger instance, dummy
+    - max instance size is a limit
+    - expensive
+    - requires reboot (disruptive)
+    - easy, no app changes needed
+    - monoliths work
+  - Horizontal
+    - cheaper probably
+    - no limit
+    - granular, can add just a tiny bit more if you want
+    - session management requires
+      - application support
+      - or off-host sessions
+        - instances are stateless
 
 
 ==============
@@ -1170,7 +1209,18 @@ Purchase Options (launch types)
       - all upfront
       - what you don't pay is billed as per second cost
   - Scheduled Reserved
-    - 
+    - you can schedule regular but not constant usage
+    - doesn't support all instance types or regions
+    - must schedule 1200 hours/year for 1 year at least
+  - On Demand Capacity Reservation
+    - in case of low availablility (like due to failure) AWS prioritizes reserved purchases, then on-demand
+    - ODCR puts you in the reserved group for this purpose, without the commitment
+    - book for a specific AZ
+    - starts immediately, no scheduling for future
+    - can't reserve what's not available
+    - good for
+      - important but short term projects
+      - temporary scale-ups
   - Dedicated hosts
     - you pay for the physical host, can launch into at will
     - have to manage host capacity
@@ -1184,8 +1234,47 @@ Purchase Options (launch types)
     - why?
       - regulations
       - don't have the extra management overhead of dedicated hosts
+  - Savings Plan
+    - hourly commitment for 1 or 3 years
+    - reserve general compute dollar amounts or specific EC2 plan
+      - general is better if you use notjust ec2
+    - savings plan also works for lambda and fargate
+    - products have special savings plan rate
+    - if commitment runs out, you just pay normal rate
 
+Status Checks
+  - 2 checks
+    - system status: host working correctly
+      - power/internet outage, hardware issues, etc
+    - instance status: instance working correctly
+      - corrupt file system, OS issues, networking misconfiguration (like setting public ipv4 address in OS) etc.
+  - can set cloudwatch alarm
+    - can perform actions like reboot
+      - or "recover," which moves to another host and rebooting. Unlike usual host migration, private ip address is retained
+        - only works on system status errors
+        - only works on some instance types
+        - doesn't work if there's an instance store
 
+Termination Protection
+  - turned on per-instance
+  - adds a second permission needed to terminate an instance
+  - functions as an approval process potentially
+
+Shutdown behavior
+  - lets you terminate an instance on shutdown, if desired
+
+Instance Metadata
+  - accessible at specific ip 169.254.169.254/latest/meta-data/(attribute, such as public-ipv4)
+  - can give lots of info including
+    - ipv4 public address
+    - temp credentials from instance role
+    - user-data (startup script)
+    - no auth, not encrypted
+      - can block via firewall
+
+==============
+ECS
+==============
 
 
 
