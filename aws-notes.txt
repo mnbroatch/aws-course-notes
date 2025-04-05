@@ -1270,8 +1270,18 @@ Instance Metadata
     - ipv4 public address
     - temp credentials from instance role
     - user-data (startup script)
+      - Bootstrapping allows for build automation, do things when launched
+      - accessible at specific ip 169.254.169.254/latest/user-data
+      - OS is configured to get user data from ip and run it
+      - usually only run on launch (but in certain cases can be set to run on every boot)
+      - run as the root user
+      - OS needs to understand script
+      - if script fails, instance will probably be status OK still, but configured wrong
+      - not secure, don't put passwords in it ideally
+      - max 16kb
+      - use this for stuff that needs to be current, AMI baking for time-insensitive things
     - no auth, not encrypted
-      - can block via firewall
+
 
 ============================
 Elastic Container Service
@@ -1449,6 +1459,7 @@ Networking
     - ENIs injected into customer VPC to communicate with it
       - consumption is done through customer vpc via ingress configurations
       - also can use public endpoint
+
 
 
 
