@@ -1335,26 +1335,120 @@ Use Fargate mode if you have a burst or periodic workload
 Elastic Container Registry
 ============================
 
-hosts container images
-each AWS account has a public and private registry
-each registry can have many repositories with many images
-images can have tags (unique within repository) 
+ECR
+  - hosts container images
+  - each registry can have many repositories with many images
+  - images can have tags (unique within repository) 
+  - Each AWS account has:
+    - Public Registry
+      - anyone can read, need permissions to write
+    - Private Registry
+      - need permissions to read or write
+  - permissions integrated with IAM
+  - Cross-region and cross-account replication available
+
+Image security scanning
+  - Basic
+  - Enhanced
+    - uses Inspector product
+      - can scan OS and software packages for issues
+
+Reporting
+  - Near-real-time metrics through cloudwatch
+  - API events logged to cloudtrail
+  - Events generated for EventBridge
 
 
+============================
+Kubernetes
+============================
+
+Open-source, cloud-agnostic container orchestrator
+
+Highly available cluster of resources organized to work as one unit
+
+Architecture
+  - Control Plane
+    - manages scheduling, applications, scaling, and deployment
+    - Components
+      - API
+        - nodes and other elements communicate with this
+        - can be horizontally scaled for HA and performance
+      - etcd
+        - Highly Available key-value store
+        - main backing store for cluster
+        - kinda works as a queue of pods
+      - kube-scheduler
+        - identifies pods with no nodes
+        - intelligently assigns node to pod
+      - clound-controller-manager
+        - interacts with AWS, Azure, other cloud platforms
+      - kube-controller-manager
+        - Node controller - monitors nodes and responds to outages 
+        - Job controller - runs pods
+        - Endpoint controller - runs pods
+        - Service Account & Token controller - Account and API token creation
+  - Cluster Nodes
+    - VM or physical server
+    - functions as worker in the cluster
+    - Runs
+      - container runtime like docker or containerd
+      - kubelet to interact with control plane via kubernetes API
+      - kube-proxy or k-proxy
+        - coordinates networking with control pane
+        - configures rules to allow communication with pods inside or services outside the cluster
+          - nodes' OS-level networking
+  - Pods
+    - smallest unit of computing
+    - description of some work to be done plus some metadata about where and how
+    - can use multiple containers but one-container-per-pod is common
+      - only have multiple if they are tightly coupled
+    - ephemeral, should be stateless
+
+  - Jobs
+    - ad-hoc process
+    - creates pods
+    - can retry
+
+  - Services
+    - collection of pods, can be thought of as an application
+
+  - Ingress
+    - entrypoint for external actor to use service
+    - Ingress -> Routing -> Service -> Pods
+    - uses Ingress Controller
+     - AWS would use a load balancer to control ingress
+
+  - Persistent Storage
+    - lives beyond life of an ephemeral pod
 
 
+============================
+Elastic Kubernetes Service
+============================
 
+AWS-managed Kubernetes
+Can run different ways: on AWS, on AWS Outpost (on-premises mini-AWS), EKS Anywhere, or even open-source EKS distro
+Control pane runs across multiple AZs
+  - etcd also across multiple AZs
+Integration with AWS products: ECR, ELB, IAM, VPC
+Persistent storage can be EBS, EFS, FSx
 
+Nodes
+  - can be
+    - Self-managed
+      - EC2 nodes you're billed as usual for and manage
+    - Managed Node Groups
+      - also EC2 but provisioning is handled by AWS
+    - Fargate pods
+      - more hands-off
+  - Have to consider node type for features like windows, GPU, Local Zones, etc
 
-
-
-
-
-
-
-
-
-
+Networking
+  - EKS Control Plane uses AWS-managed VPC 
+    - ENIs injected into customer VPC to communicate with it
+      - consumption is done through customer vpc via ingress configurations
+      - also can use public endpoint
 
 
 
