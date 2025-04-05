@@ -1269,18 +1269,57 @@ Instance Metadata
   - can give lots of info including
     - ipv4 public address
     - temp credentials from instance role
-    - user-data (startup script)
-      - Bootstrapping allows for build automation, do things when launched
-      - accessible at specific ip 169.254.169.254/latest/user-data
-      - OS is configured to get user data from ip and run it
-      - usually only run on launch (but in certain cases can be set to run on every boot)
-      - run as the root user
-      - OS needs to understand script
-      - if script fails, instance will probably be status OK still, but configured wrong
-      - not secure, don't put passwords in it ideally
-      - max 16kb
-      - use this for stuff that needs to be current, AMI baking for time-insensitive things
     - no auth, not encrypted
+
+Bootstrapping
+  - user-data (startup script) is entrypoint, part of metadata
+    - Bootstrapping allows for build automation, do things when launched
+    - accessible at specific ip 169.254.169.254/latest/user-data
+    - OS is configured to get user data from ip and run it
+    - usually only run on launch (but in certain cases can be set to run on every boot)
+    - run as the root user
+    - OS needs to understand script
+    - if script fails, instance will probably be status OK still, but configured wrong
+    - not secure, don't put passwords in it ideally
+    - max 16kb
+    - use this for stuff that needs to be current, AMI baking for time-insensitive things
+    - base64 encoded-- UI will do this but not CF template
+
+    - cfn-init
+      - script installed on instances that does config management
+      - command to call it is passed in through user-data, like other script calls
+      - declarative bootstrapping, describe desired state
+      - handles
+        - installing correct version of packages
+        - manipulate OS groups and users
+        - download zip files and extract them
+        - create files with certain contents
+        - run commands
+        - control services
+      - script gets config from CFN Resource metadata
+        - in CFN template, EC2Instance[Metadata][AWS::CloudFormation::Init]
+          - under that, things like "configSets", "configure_instance"
+      - can watch for metadata changes and respond
+
+    - Creation Policy
+      - allows resource to report to CF that its configuration went well
+      - in CFN template, example is EC2Instance[CreationPolicy][ResourceSignal][Timeout] = "PT15M"
+        - in this example, CFN will wait for 15min to get a signal from cfn-signal
+        - cfn-signal sends result of calling cfn-init
+          - if it's an error, or the timeout elapses, stack is given an error status
+
+Instance Roles
+  - instance assumes IAM role with permissions policy attached to it
+  - Instance profile allows apps in EC2 instance with assumed role to use permissions
+    - in UI, created at same time Instance role is created (named the same)
+    - in CF template or CLI, need to create separately
+    - UI looks like you're attaching instance role to instance, but really you attach Instance profile
+    - Instance profiles abstract away the explicit rule assuming that the instance would have to do
+  - Temp credentials with Permissions are exposed via instance metadata
+    - aws cli automatically looks for them there and uses them
+    - rotated and valid, don't cache
+    - iam/security-credentials/{role-name}
+  - much better practice than putting keys in instance or elsewhere unsecured
 
 
 ============================
@@ -1461,7 +1500,17 @@ Networking
       - also can use public endpoint
 
 
+============================
+SSM Parameter Store
+============================
 
+(simple) Systems Manager Parameter Store
+  - storage for config and secrets
+  - heirarchy ("folders") and versioning
+  - String, StringList, and SecureString
+  - SecureString is Cyphertext encrypted by KMS
+    - KMS permissions needed for this
+    - `aws ssm get-parameters-by-path {path} --with-decryption` gets plaintext
 
 
 
