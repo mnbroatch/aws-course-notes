@@ -79,6 +79,7 @@ Containers
         - each layer is stored as diff
         - layers are read only
       - first line is base image to extend, or from "scratch" (literal string FROM scratch)
+      - entrypoint is what initially runs
       - last layer is special read/write layer where stuff happens during container running
       - sharing the read-only layers is fast and cool
   - Container registry
@@ -1272,9 +1273,97 @@ Instance Metadata
     - no auth, not encrypted
       - can block via firewall
 
-==============
-ECS
-==============
+============================
+Elastic Container Service
+============================
+
+managed container based compute service
+
+Configuration
+  - Container Definition
+    - Tells ECS enough information about the single defined container
+      - where your container is (point to a container registry)
+      - what ports it will expose
+
+  - Task Definition
+    - represents whole application
+      - can be made of multiple containers
+    - stores
+      - container definitions
+      - what resources are used by task
+      - networking mode
+      - compatibility metadata
+      - task role
+        - temp credentials from role assumed by task
+        - best practice for giving ECS containers AWS permissions
+
+  - Service Definition
+    - how do we want task to scale, including load balancing
+    - how to handle failed tasks
+    - can provide High Availability
+
+Clusters
+  - where containers run
+  - you give ECS an image and it makes a container in a cluster
+  - container is in a container registry
+    - AWS has one, ECR
+  - Tasks and services can be deployed into clusters
+  - 2 modes
+    - EC2 mode
+      - EC2 Management Component
+        - manages cluster, instance placement, scheduling
+      - Auto Scaling Group manages horizontal scaling of instances
+      - instances are provisioned
+        - you pay for them even if you launch no containers
+      - you have to worry about capacity of your cluster
+      - task images are deployed as containers on these host instances
+      - you can use spot pricing or reserved instances
+    - Fargate mode
+      - Serverless, you don't manage the EC2 instances
+      - Containers run in Fargate Shared Infrastructure
+      - tasks and services are given network interfaces in VPC
+
+Use ECS vs just EC2 instances if you use containers
+Use EC2 mode if you have a large workload and price is important (so you can use spot or reserved pricing)
+Use Fargate mode if you have a large workload and low overhead is important
+Use Fargate mode if you have a burst or periodic workload
+  - with EC2 mode you always have a fleet of container hosts running
+    - sort of? good tuning could scale down and be as efficient, but there's friction and it's overhead in any case
+
+
+============================
+Elastic Container Registry
+============================
+
+hosts container images
+each AWS account has a public and private registry
+each registry can have many repositories with many images
+images can have tags (unique within repository) 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
