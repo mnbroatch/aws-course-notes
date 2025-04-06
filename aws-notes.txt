@@ -1321,6 +1321,65 @@ Instance Roles
     - iam/security-credentials/{role-name}
   - much better practice than putting keys in instance or elsewhere unsecured
 
+System and Application Logging
+  - Might want OS-level and application-level metrics
+  - Cloudwatch and Cloudwatch Logs can't see inside EC2 instance
+  - Architecture
+    - Cloudwatch Agent runs in app and sends data to those services
+      - Agent configuration tells agent what to capture
+      - Just by installing and running agent with default config,you get extra metrics
+        - you do have to generate default config with the wizard
+    - Role attached to instance with Cloudwatch permissions
+    - Log group for every log file we want to inject into CWL, log stream in each group does the logging
+
+Placement Groups
+  - influences instance placements
+  - 3 strategies available
+    - Cluster
+      - keep instances close
+      - For best performance
+        - all members have direct connections to the others
+        - can double bandwidth from 5Gbps to 10
+        - should use enhanced networking and high-bandwidth instances to get max speeds
+        - should use same instance type for best result
+      - best to launch all instances at same time
+      - first launch locks group to an AZ
+    - Spread
+      - keep instances far
+      - good for resilience, why use redundancy if they aren't spread apart
+      - instances guaranteed to be on a different rack from the others
+        - each rack has its own network and power source
+      - 7 instances per AZ limit
+    - Partition
+      - keep many (> 7) instances far
+      - group instances into "partitions" that you want to keep far apart
+        - max 7 partitions, each has its own rack
+        - can send partition data to topology aware apps, which can make intelligent data replication decisions
+
+Dedicated Host
+  - nobody else uses it
+  - can host a specific family and size of instances
+    - newer nitro-based hostst can mix and match sizes
+  - no additional instance charge
+  - on-demand and reserve options available
+  - host hardware has physical sockets and cores
+    - can help with licensing
+  - does not support
+    - RHEL, SUSE Linux, or Windows AMIs
+    - RDS instances
+    - Placement groups
+  - can share cross-account using Resource Access Manager
+
+Enhanced Networking
+  - virtualization-aware NIC splits itself into mini- network cards
+    - uses SRV-IOV
+    - host doesn't need to manage calls to a single logical card, can assign one per instance
+
+EBS-Optimized Instance
+  - storage IO doesn't affect data IO, stack has these separated somewhat
+  - most instances enable by default, others can enable for a fee
+  - required for best performance on GP2 and IO1 volume types
+
 
 ============================
 Elastic Container Service
