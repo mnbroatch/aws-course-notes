@@ -2,7 +2,6 @@
 General
 ==============
 
-
 Storage
   - Architecture
     - Direct
@@ -169,6 +168,46 @@ Horizontal vs Vertical Scaling
       - or off-host sessions
         - instances are stateless
 
+Domain Registrar
+  - Has relationships with major domain registries, which manage top level domains as vested by IANA
+  - Registration process:
+    - First, check with top level organization if domain is available
+    - Create zonefile (database for domain with DNS info)
+    - Allocate nameservers (4 per zone) - this is a "hosted zone"
+      - Tell top level org about these. They add nameserver records that communicate with hosted zone
+
+DNS Nameservers
+  - authorative for their domain
+  - stores these types of "resource records":
+    - nameserver records
+      - "amazon.com" in the .com zone points to servers in the amazon.com zone
+      - root zone similarly points to .com zone
+    - A & AAAA records
+      - maps a name to an IP address
+      - A maps to ipv4, AAAA maps to ipv6
+        - usually create both for client compatibility
+    - CNAME
+      - Points a name to another name
+        - could point www.blah.com to blah.com for instance
+      - can't point apex (blah.com) at another name. Route53 has ALIAS record to do this
+    - MX
+      - routes emails to servers
+        - A record for "mail"
+        - MX record for "mail"
+        - another MX record for "mail.stuff."
+          - dot on right means it's fully qualified (not relative to domain)
+            - can point outside zone, maybe at a different mail service that the zone owner likes better
+        - mail server sends to: stuff@gmail.com
+          - queries gmail.com for MX records
+          - resolves priority (lower # is higher prio) 
+          - gets hostname, then has to query for IP
+    - TXT
+      - arbitrary, can be used to prove to google for instance that you own the domain you say you do
+        - other patterns exist, but the key is only the owner can add stuff and that helps
+  - TTL
+    - Walking the above tree takes time, but you get an authoritative answer for what IP to hit
+    - This answer can come with a TTL, which allows resolver server (like 8.8.8.8, for instance) to cache answer (now non-authoritative)
+
 
 ==============
 VPC
@@ -331,48 +370,96 @@ CFN templates create stacks (a template can start many stacks). Stacks make stuf
 Route53
 ==============
 
+Domain Registrar and Hosted Zones (managed nameservers)
 Globally resillient, no region
 
- 
-Register Domains
-  - Has relationships with major domain registries, which manage top level domains as vested by IANA
-  - Registration process:
-    - First, check with top level organization if domain is available
-    - Create zonefile (database for domain with DNS info)
-    - Allocate nameservers (4 per zone) - this is a "hosted zone"
-      - Tell top level org about these. They add nameserver records that communicate with hosted zone
+Hosted Zones (managed nameservers) and general DNS flow
+  - Can be
+    - Public
+      - accessible to public internet (duh)
+      - Hosted on 4 nameservers which have the resource records on them
+      - godaddy or route53, say, tells the .com TLD server, say, about your nameservers
+        - if external registrar, you need to tell godaddy to tell .com to point to your r53 nameservers
+          - uses NS record
+      - vpc by default uses a Route53 resolver for dns queries
+        - things in VPC can use this, VPC + 2 address
+        - still uses public root dns servers for public hosted zones
+      - monthly cost and tiny charge for queries
+    - Private
+      - Linked to VPC in your account, can link cross-account but not through UI
+        - Route53 resolver first looks for private hosted zone before sending request to root dns server
+      - can do split-view hosting where the same name has both a private and public host
+        - could have a subset of records in public zone and all records in private zone
+          - maybe some subdomains don't resolve publicly
+        - could make a company website that appears different over vpc
+          - seems horrible but what do I know
 
-Host Zones (managed nameservers) and general DNS flow
-  - Can be public or private (linked to VPC)
-  - stores records
-    - nameserver records
-      - "amazon.com" in the .com zone points to servers in the amazon.com zone
-      - root zone similarly points to .com zone
-    - A & AAAA records
-      - in amazon.com zone, the host/name of www (subdomains may or may not be hosts) might map to an ip address.
-        - CNAMES can point multiple domains to same host/name (NOT DIRECTLY TO IP)
-      - A maps to ipv4, AAAA maps to ipv6
-        - usually create both for client compatibility
-    - Cname
-      - see above
-    - MX
-      - routes emails to servers
-        - A record for "mail"
-        - MX record for "mail"
-        - another MX record for "mail.stuff."
-          - dot on right means it's fully qualified and can point outside zone
-            - maybe a different mail service that the zone owner likes better
-        - mail server sees to: stuff@gmail.com
-          - queries gmail.com for MX records
-          - resolves priority (lower # is higher prio) 
-          - gets hostname, then has to query for IP
-    - TXT
-      - arbitrary, can be used to prove to google for instance that you own the domain you say you do
-        - other patterns exist, but the key is only the owner can add stuff and that helps
-  - TTL
-    - Walking the above tree takes time, but you get an authoritative answer for what IP to hit
-    - This answer can come with a TTL, which allows resolver server (like 8.8.8.8, for instance) to cache answer (now non-authoritative)
-   
+Special type of resource record: ALIAS
+  - can point apex (amazon.com) to AWS service
+  - resolves to an A or AAAA record, you specify
+  - useful because, for instance, Elastic Load Balancer doesn't give you an IP but a name that points to one (an A record)
+    - can even point to an S3 bucket, other things
+  - no charge to use
+
+Health Checks
+  - separate from records, but records can use them
+    - routing other than simple routing doesn't return unhealthy records
+  - fleet of health checkers
+    - don't block access by them if you want health check
+  - check every 30s or 10s for a fee
+  - support TCP, HTTP(S), HTTP(S) with string matching
+  - can be healthy or unhealthy
+  - healthy check must establish connection in 4 seconds and receive body in 2 more
+  - healthy string match check must contain string in first 5120 bytes
+  - Endpoint checks, Cloudwatch Alarm checks, or calculated checks (from other checks)
+
+
+Routing types:
+  - Simple Routing
+    - one record per name
+      - can have multiple values
+      - consumer gets all of them randomly and chooses one, can try others on fail
+    - good for sending all traffic to one logical place, like one of a few identical servers, or whatever
+    - no health checks
+  - Failover Routing
+    - health check on primary record
+    - returns secondary record if primary health check fails
+      - maybe a maintenance page
+  - Multi-value Routing
+    - multiple records for same name
+    - up to 8 are returned randomly, not those with unhealthy checks
+    - improves availability
+    - not a replacement for load balancing
+      - client still picks ip to use
+      - load balancer has more features
+        - more advanced health checks, sticky sessions, etc.
+  - Weighted Routing
+    - records with same name returned proportional to weight
+    - quirk: if all records are zero, equal weight to all
+    - good for testing new versions (just give 5% of users this version)
+    - unhealthy chosen record restarts process
+  - Latency-based Routing
+    - one record of a particular name in each region
+    - lowest latency region is automatically chosen
+      - not lowest latency resource, just general region latency
+      - you specify what region the resource is in
+        - could make a mistake here! no validation of that.
+    - if unhealthy chosen record, use next lowest latency record
+  - Geolocation Routing
+    - records are tagged with location: country, continent, default, or subdivision (state)
+    - only most specific relevant record is returned, or default record, or "NO ANSWER"
+  - Geoproximity Routing
+    - gives record with lowest physical distance (with configurable bias) to requester
+    - define rules with
+      - region if AWS resource, lat + lon if external
+      - bias that expands the circle area that a location takes up for distance calculation
+        - can move midpoint only on external resources (by shifting lat/lon)
+
+Interoperability
+  - Registering Domain OR hosting zone files, not both
+  - Can register domain in one place, then set up nameservers in another
+    - give registrar those servers' info, registrar tells TLD registry about it
+    - R53 can be either party here
 
 
 =========================
