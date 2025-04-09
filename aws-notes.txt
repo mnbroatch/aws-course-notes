@@ -208,6 +208,88 @@ DNS Nameservers
     - Walking the above tree takes time, but you get an authoritative answer for what IP to hit
     - This answer can come with a TTL, which allows resolver server (like 8.8.8.8, for instance) to cache answer (now non-authoritative)
 
+Databases
+  - Relational DataBase Management System
+    - term incorrectly used interchangeably with Structured Query Language
+      - SQL is the language used to store, update, retrieve data
+      - RDBMS is the system, not the language
+    - Data Structure
+      - uses rigid schema
+        - names of things, types, valid values, storage metadata
+        - hard to change after data comes in
+      - fixed relationships between tables
+      - table structure
+        - columns are attributes
+        - rows are entries
+        - cells are values
+          - every cell must be populatd
+      - Join Tables
+        - defined in advance
+        - imagine table with human 1 mapped to animal 1, human 1 mapped to animal 2, and human 2 mapped to animal 1
+          - this is a human_animal table
+          - composite keys (must be unique) are 1-1, 1-2 and 2-1
+          - many to many
+            - animal one belongs to humans 1 and 2
+            - human one owns animals 1 and 2
+  - Nonrelational (NoSQL)
+    - more relaxed schemas
+    - everything else, there's different models
+      - Key-Value
+        - no structure
+        - fast, scalable
+        - for simple requirements or in-memory caching
+        - S3
+      - Wide Column Store
+        - partition key (think hashing bucket) for subset of table (whole data structure)
+        - optionally, each row can have a clustering key
+          - determine ordering of rows and physical layout on disk
+        - items can have different columns
+        - fast, scalable
+        - DynamoDB
+      - Document Database
+        - Documents have JSON or whatever structure
+          - structure can usually be different betwen items
+          - documents have keys at least
+        - like key-value store but DB is aware of contents
+        - good for deep attribute interactions, heirarchical structure, whole-document operations
+      - Row based DB
+        - Online Transaction Processing db
+        - like above, adding rows and working with rows is the main thing
+      - Column based DB
+        - inefficient for operating on rows
+        - good for reporting, when all of a certain column will be needed
+          - "which variant (where variant is a column) is sold the most?"
+      - Graph based DB
+        - relationships stored with data instead of being calculatd on query
+        - each row might be a node (Person node and Company node, say)
+        - edges between nodes have a name and a direction
+          - John "works for" -> Amazon
+          - edges can have key-value pairs like "startdate"
+        - good for "who works for Amazon" queries because edges are stored with data
+        - social media, complex relationships
+  - Transaction Models
+    - CAP Theorem - choose 2:
+      - Consistency, every read will get latest write (or error)
+      - Availability, every request will get non-error, without recency guarantee
+      - Partition Tolerant, system functions even if there are communication errors between nodes
+    - 2 models with tradeoffs
+      - ACID: focuses on Consistency
+        - limits scalability
+        - A.tomic: all or none of the parts of transaction succeed, no partials
+        - C.onsistent: DB moves from valid state to valid state, no in-between
+        - I.solated: concurrent transactions behave the same as if they were sequential, no interference
+        - D.urability: once transaction is reported successful, data has been written to durable storage
+        - RDS tends to be ACID based
+      - BASE: focuses on Availability
+        - B.asically A.vailable: Does its best to read and write, but no guarantee of getting latest write
+        - S.oft State: What you read might not have latest changes
+          - writes might happen on another server or something
+          - application has to deal with it
+            - Might be special method to call to wait for "catch up"
+        - E.ventual Consistency: even though latest things might take a bit, system will eventually be correct
+        - NoSQL tends to be this
+        - DynamoDB's basic operation, but can work acid-like with more advanced features
+
 
 ==============
 VPC
@@ -1466,6 +1548,22 @@ EBS-Optimized Instance
   - storage IO doesn't affect data IO, stack has these separated somewhat
   - most instances enable by default, others can enable for a fee
   - required for best performance on GP2 and IO1 volume types
+
+Bad practice: running DB on EC2
+  - Why might you want to?
+    - very specific need for OS-level access with DB
+    - DBROOT for advanced tuning
+      - AWS exposes a lot of this stuff tho
+    - most reasonable: AWS doesn't support the DB you need to support
+  - Why you shouldn't?
+    - Admin overhead
+      - painful upgrades
+      - backups, Disaster Recovery
+      - replication, monitoring
+    - Single AZ
+    - AWS has cool features
+    - worse scaling, serverless is better for burst
+    - probably not going to optimize it as well as AWS has
 
 
 ============================
