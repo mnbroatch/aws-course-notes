@@ -1757,6 +1757,86 @@ SSM Parameter Store
     - `aws ssm get-parameters-by-path {path} --with-decryption` gets plaintext
 
 
+============================
+Relational Database Service
+============================
+
+Database server as a service
+  - can have multiple dbs on RDS server
+  - lots of DB options like MariaDB, Microsoft SQL, MySQL
+  - Security group is attached and controls what has access
+  - no SSH or OS access
+    - RDS Custom can give some low level access
+  - operates in vpcs in a region
+  - can give public ip address in a public subnet, but highly discouraged
+  - each instance gets its own dedicatd EBS storage
+  - High Availability
+    - Multi-AZ Instance Deployment
+      - choose one subnet for primary instance and one for standby (High Availability)
+        - if not specified, random but in different AZs
+      - launches instance in both
+      - means we need to add a subnet in each AZ we want to use
+      - data replicated to standby synchronously
+      - failover can take 1-2 minutes
+      - comes with an endpoint (RDS CNAME)
+        - always points to primary (even after standby becomes primary due to failover)
+      - backups occur from standby instance
+      - standby instance can't be read/written to directly
+        - can make it primary manually though, good for maintenance
+    - Multi-AZ Cluster Deployment
+      - 3 instances across 3 AZs
+        - Writer and 2 Readers
+          - Readers can be read from, unlike standby instance in instance mode
+          - Writer can be read or written
+      - Writer replicates changes to readers
+        - Data is committed when 1 reader 
+      - Fast writes to local SSD Storage, then queued to EBS
+      - Replication is via transaction logs (faster)
+        - allows 35s failover
+      - Endpoints
+        - Cluster Endpoint points to writer, used for reads writes and admmin
+        - Reader Endpoint points to some available reader
+        - Instance Endpoints used for testing/troubleshooting
+  - Subnet Group
+    - list of subnets RDS can use for a given DB
+    - a good strategy is one subnet group per RDS deployment
+  - Backups
+    - stored in managed bucket in S3 (can't see in S3)
+      - thus regionally resilient
+      - cause IO pause, if using one instance then it could delay performance
+    - Snapshots
+      - manual
+      - All DBs on instance are backed up
+      - Don't expire or get deleted with RDS instance
+      - like other snapshots, incremental
+    - Automated Backups
+      - similar, happen during backup window
+      - every 5 minutes transaction logs are stored
+        - store the actual changes + operations, used w/ snapshot to restore to 5 min granularity
+      - Set expiry up to 35 days
+        - even if you retain backup after deleting instance, expiry applies. Need to do "Final Snapshot" to keep
+      - can replicate cross region
+    - Restores
+      - creates new instance with new address
+      - take time to finish
+  - Cost
+    - Instance size and type billed per second
+    - Multi-AZ costs more
+    - EBS Storage cost
+    - data transfer per gig
+    - snapshot storage is free, extra backup is per GB month
+    - licensing if applicable
+  -Read Replicas
+    - can have 5 per instance
+      - can have read-replicas of read-replicas, but it can get laggy
+    - replicated to asynchronously
+    - can be cross-region
+    - good for scaling read load
+    - good for adding resilience and recovery time
+      - Restores take time, but failing over to a read replica is fast
+      - doesn't help with data corruption
+
+
 
 
 
