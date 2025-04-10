@@ -1835,6 +1835,72 @@ Database server as a service
     - good for adding resilience and recovery time
       - Restores take time, but failing over to a read replica is fast
       - doesn't help with data corruption
+  - Security
+    - Encryption
+      - Can set encryption in transit to mandatory on a per-user basis
+      - supports EBS volume encryption with KMS
+      - logs, snapshots, etc are encrypted
+      - can't remove encryption from host
+      - Oracle & M$ support Transparent Data Encryption, handled within the db engine instead of volume
+      - Oracle supports CloudHSM, with stronger key controls that trust AWS less
+    - Authentication
+      - local db user configured to use AWS Auth Token
+        - policies on IAM instance role contain mapping between role and local RDS db user
+        - this lets role generate an auth token with 15 minute validity that can log into db
+    - Authorization
+      - RDS permissions are handled with regard to local user
+      - can't control RDS permissions through IAM permissions (only admin permissions like creating new RDS instances or connecting in general)
+  - RDS Custom
+    - fills gap between EC2 db instance and RDS
+      - RDS with lower level access
+    - available for MS SQL & oracle
+    - can use SSH, RDP, Session Manager
+    - less managed; you'll see the EC2 instance and EBS volumes
+    - to customize, pause first, customize, then resume
+    - OS etc is shared responsibility between you and AWS
+
+Aurora
+  - Provisioned
+    - Cluster
+      - single primary instance, 0-15 replicas
+        - replicas can be read from, only primary written to
+          - write endpoint (primary), read endpoint (load-balanced)
+      - instances don't use their own local storage, shared volume instead
+        - 128TiB limit
+        - 6 storage replicas in 3 AZs 
+          - self-healing, heal using other replicas
+          - enough redundancy that disk failure doesn't mean restore is needed
+        - makes adding replicas more efficient (don't need to bootstrap new storage)
+        - billed for what you use, no allocation
+          - billed for high water mark, need a new cluster if data use is reduced significantly (!)
+            - being phased out
+    - Billing
+      - no free tier
+      - cheaper for all but tiniest RDS usage
+      - charged per second of compute, 10min/hr min
+      - storage billed GB month, IO cost per request
+      - Backup free up to amount stored
+    - Restore, Clone, Backtrack
+      - Backups work same as RDS
+      - Restore creates new cluster
+      - Backtrack can do in-place rewinding
+      - fast clone available
+        - references original db and stores differences
+          - not sure why you'd need to make a lot of clones so who cares about speed here but w/e
+  -Serverless
+    - Much simpler, easier
+    - Cluster
+      - uses Aurora Capacity Units
+      - set a min/max to use based on usage
+      - can scale down to 0
+      - same 6-volume-replica resilience
+    - Entrypoint
+      - AWS proxy fleet (invisible to us) sends incoming request to stateless ACU
+    - good for infrequently-used applications, new applications (unsure of scale), variable workload, multi-tenant (more scaling comes with more moneys)
+    - billed per-second
+
+
+
 
 
 
