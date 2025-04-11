@@ -291,9 +291,9 @@ Databases
         - DynamoDB's basic operation, but can work acid-like with more advanced features
 
 
-==============
-VPC
-==============
+======================
+Virtual Private Cloud
+======================
 
 - Virtual network
 - Created within one region and one account
@@ -1898,8 +1898,52 @@ Aurora
       - AWS proxy fleet (invisible to us) sends incoming request to stateless ACU
     - good for infrequently-used applications, new applications (unsure of scale), variable workload, multi-tenant (more scaling comes with more moneys)
     - billed per-second
+  - Global Databases
+    - secondary cluster in a second region (up to 5)
+      - up to 16 read-only replicas
+      - one volume replica, ~1s lag behind primary
+    - good for global read scaling, Disaster Recovery for region failure
+  - Multi-Master
+    - multiple writeable (and readable) instances
+    - no load balancing, app needs to manage
+      - it's not as simple as sticking the instances behind a load balancer bc
+        - they use persistent connections
+        - this naive approach can only really round-robin servers instead of intelligently route
+    - writes propose a change, gets a quorum of nodes to say it's OK
+      - simultaneous write to the same row through a different node would be rejected
+    - changes also have to be written to in-memory cache of other read/write nodes
 
+RDS Proxy
+  - maintains a pool of connections to the DB that it can use on behalf of applications that consume it
+  - runs inside a vpc, only accessible inside
+  - Why?
+    - opening and closing connections uses resources
+    - can multiplex - fewer db calls than client calls
+    - do we really want every lambda call to open and close a connection?
+    - database failover doesn't terminate connection with proxy/application
+  - When?
+    - we have smaller db instance and too many connections
+    - specifically lambda gets a boost
 
+Database Migration Service
+  - runs using EC2 replication instance
+  - instance uses migration tasks
+    - tasks point at source and target DBs
+      - one of them must be running in AWS
+    - task types
+      -  Full Load: one-off migration of all data
+      -  Full Load + Change Data Capture: includes ongoing changes
+      -  CDC Only: can be useful if you use a different method to do the Full Load 
+      - while cdc is going and after full load + cdc catching up and stabilizing, you can switch over
+        - near-zero downtime
+  - Schema Conversion Tool
+    - converts schemas from one version or engine to another
+  - Snowball
+    - for large multi-TB migrations
+    - physical device (!) that you mail to AWS after using conversion tool to dump db onto it
+    - then they stick it on S3 and migrate to target from there
+      - this counts as a conversion, that's why SCT was used
+    - can keep tracking CDC changes
 
 
 
