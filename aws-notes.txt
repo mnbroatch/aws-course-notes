@@ -1946,13 +1946,45 @@ Database Migration Service
     - can keep tracking CDC changes
 
 
+===================
+Elastic File System
+===================
+
+NFSv4 (Network Filesystem) implementation in AWS
+  - can be mounted into a folder on linux (only) instances
+  - can be mounted to multiple instances that share the data
+  - Private service, runs in VPC
+  - EFS launches Mount Targets in AZ in VPC for EC2 instances connect to 
+    - for HA put a mount target in each AZ you use
+  - General Purpose mode is good for 99% of cases, low latency, general file serving
+  - Max I/O good for highly parallel jobs like big data
+    - jobs split over many instances accessing EFS at the same time
+    - higher latency
+  - Bursting mode is like GP2, speed based on storage size
+  - Provisioned mode is like IO-1, speed set separate from size
+  - Standard and Infrequent Access classes
+    - can move between with lifecycle policies
 
 
+===================
+AWS Backup
+===================
 
+- Consolidate backups and restores across products and even accounts
+- Fully managed
+- wide range of products including s3, RDS, aurora, EBS
 
+Backup Plans
+  - frequency, window, lifecycle, vault, region copy
+Resources
+  - What we want to backup
+Vaults
+  - Where backups are stored
+  - Vault lock is a feature that makes it impossible to delete something (earlier than retention expiry)
 
-
-
+- Can also do manual backups
+- Can do Point-in-time recovery
+- When a backup is transitioned to cold storage, it needs to be there for >= 90days
 
 
 
