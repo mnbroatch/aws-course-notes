@@ -1987,6 +1987,58 @@ Vaults
 - When a backup is transitioned to cold storage, it needs to be there for >= 90days
 
 
+======================
+Elastic Load Balancer 
+======================
+
+Evolution
+  - version 1 (Classic Load Balancer)
+    - outdated, always use v2 for new deployments
+    - not true layer 7, can do http/https but don't understand them
+    - lack features like target groups and rules
+    - 1 SSL cert per CLB (SNI not supported)
+      - could necessitate many additional CLBs, different domains can't use same
+  - version 2
+    - Application Load Balancer
+      - layer 7, understands http(s)
+        - cookies, headers, user location, etc
+      - connection does not go directly through from user to layers, new connections made from LB
+        - could have security implications
+      - rules direct connections which arrive at listener
+        - priority order, catch-all is lowest priority
+        - rules have conditions like headers, query strings, path, and source ip
+      - actions are taken like forward, fixed response, or even some auth like Cognito
+    - Network Load Balancer
+      - Layer 4, understands TCP, TLS, UDP
+        - can't interpret headers, etc.
+        - no session stickiness (which uses cookie)
+      - faster than ALB
+      - only simple ICMP/TCP health checking
+      - can have static IPs
+        - ALBs can't because the ALB dns name resolves to the nodes' IPs
+      - can handle unbroken encryption
+
+Architecture
+  - accepts and distributes connections from users
+  - abstracts infrastructure for good failover
+  - choose between ipv4 or dual stack (ip 4 and 6)
+  - choose 1 subnet in each AZ you want to use
+    - 2+ is recommended
+  - nodes are deployed in those AZs, and the region-level load balancer distributes equally between them
+    - an A record DNS name points to those nodes
+    - Cross-Zone load balancing means each node is aware of instances across all zones and can distribute cross-zone
+      - if nodes could only route to their own zone instances, instances with fewer peers would be slammed
+  - choose between internet-facing (nodes given public IPs) or internal
+  - need 8 or more free ip addresses in subnet to function
+    - to scale up, have more available
+  - a load balancer per tier separates the tiers and isolates scaling
+    - one big master elb would scale clunkily with the whole system and managing per-tier access would be a pain
+
+
+  - Listeners 
+    - listeners on nodes accept traffic based on port and protocol
+     
+
 
 
 
