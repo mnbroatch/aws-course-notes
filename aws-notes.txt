@@ -1565,6 +1565,64 @@ Bad practice: running DB on EC2
     - worse scaling, serverless is better for burst
     - probably not going to optimize it as well as AWS has
 
+Launch specifications
+  - can specify in advance AMI, keypair to use, storage, instance type, networking, security groups, userdata, IAM role
+  - Launch Configuration
+    - older, not editable
+    - can only be used with ASGs
+  - Launch Template
+    - newer features like versioning (still no edits), capacity reservations, placement groups
+    - can also be used to launch individual instances
+
+Auto Scaling Groups
+  - free, billed for instances obvs
+  - Use Launch Configurations or Launch Templates to manage autoscaling and self-healing of EC2 systems
+  - all instances in group use the same spec
+  - specify min, desired, and max capacity
+    - it keeps number of instances at the desired and between the ends
+  - Scaling Policy adjusts desired capacity based on cpu load, etc
+    - without scaling policy, just manual scaling (desired size is always maintained)
+    - configured at VPC level, configuration specifies which subnets to launch instances into
+      - instances spread mostly evenly across subnets, best effort
+    - policy types
+      - Manual
+      - Scheduled
+      - Dynamic
+        - Simple: static adjustment based on alarm
+          - "add an instance if total CPU load is > 50%"
+        - Stepped: adjustment based on size of alarm breach
+          - "add an instance if total CPU load is > 50% or 2 instances if > 80%"
+          - conforms to demand curve better
+        - Target Tracking: set target cpu, network in/out, ALB request count
+          "add instances until total CPU load is 50%"
+        - SQS ApproximateNumberOfMessagesVisible
+    - Cooldown periods prevent extra cost by smoothing chaotic changes in conditions
+      - since there's a minimum billable time when instance is provisioned
+  - Self-healing occurs when health check fails and instance is replaced
+  - Easy HA trick: 1:1:1 in multiple AZs, instance will be re-provisioned if one AZ fails
+  - can put specific instances in standby
+  - can attach to ELB target groups so load balancer knows about instances
+    - scaling can use richer ALB status checks
+      - be careful you don't health check app instances based on DB health or other things that would remove fine instances
+  - Scaling Processes (can be suspended or resumed)
+    - Launch
+    - Terminate
+    - AddToLoadBalancer
+    - AlarmNotification (repond to CW alarms)
+    - AZRebalance (spread across AZs)
+    - HealthCheck
+    - ReplaceUnhealthy
+    - ScheduledActions
+  - Lifecycle Hooks
+    - Launch and Terminate allow for custom actions to happen at the same time
+    - instances pause and continue after a timeout or doing CompleteLifecycleAction
+      - can then resume or abandon
+      - happens before terminate, after launch
+    - supports EventBridge and SNS
+
+
+
+
 
 ============================
 Elastic Container Service
@@ -2033,10 +2091,6 @@ Architecture
     - to scale up, have more available
   - a load balancer per tier separates the tiers and isolates scaling
     - one big master elb would scale clunkily with the whole system and managing per-tier access would be a pain
-
-
-  - Listeners 
-    - listeners on nodes accept traffic based on port and protocol
      
 
 
