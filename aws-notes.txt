@@ -1602,7 +1602,14 @@ Auto Scaling Groups
   - Easy HA trick: 1:1:1 in multiple AZs, instance will be re-provisioned if one AZ fails
   - can put specific instances in standby
   - can attach to ELB target groups so load balancer knows about instances
-    - scaling can use richer ALB status checks
+    - scaling can use richer health checks
+      - Simple EC2
+        - based on EC2 status, unhealthy includes stopping, shutting down, impaired
+      - ELB health check
+        - can be application-aware with text pattern matching
+      - Custom
+        - external system can mark instances unhealthy
+      - can set grace period for bootstrapping before instance can fail
       - be careful you don't health check app instances based on DB health or other things that would remove fine instances
   - Scaling Processes (can be suspended or resumed)
     - Launch
@@ -2091,6 +2098,15 @@ Architecture
     - to scale up, have more available
   - a load balancer per tier separates the tiers and isolates scaling
     - one big master elb would scale clunkily with the whole system and managing per-tier access would be a pain
+
+Secure connections
+  - Bridging
+    - default
+    - connection is terminated on ELB (separate connection goes further between ELB and servers)
+      - decrypted on the load balancer
+    - needs certificate for domain name
+  - Passthrough
+  - Offload
      
 
 
