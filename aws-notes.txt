@@ -2082,6 +2082,18 @@ Evolution
       - can have static IPs
         - ALBs can't because the ALB dns name resolves to the nodes' IPs
       - can handle unbroken encryption
+    - Gateway Load Balancer
+      - enables transparent inspection of requests/responses
+        - think a security appliance that filters traffic
+          - particularly, a 3rd party one in a separate VPC
+      - uses GENEVE tunnel
+      - GWLB Endpoint is in Internet Gateway route table
+        - points to GWLB, which encapsulates packet and points to tunneled instances
+        - tunneled instance does modification/inspection
+        - packet goes back to GWLB Endpoint
+        - GWLB removes capsule and sends to original destination
+      - This all means packet doesn't need source/dest to be rewritten and stuff
+
 
 Architecture
   - accepts and distributes connections from users
@@ -2102,11 +2114,32 @@ Architecture
 Secure connections
   - Bridging
     - default
+    - can see http(s) level info
     - connection is terminated on ELB (separate connection goes further between ELB and servers)
       - decrypted on the load balancer
-    - needs certificate for domain name
-  - Passthrough
+        - needs certificate for domain name because of this
+          - AWS has access to this cert, may affect regulation
+        - sent further on re-encrypted
+          - instances have to have certs and do cryptography, might be expensive
+          - maybe not always encrypted to instances?
+  - Passthrough (NLB)
+    - can only see destination and ports
+    - no https decryption done
+    - instances still have to have certs and do cryptography
   - Offload
+    - like bridging but not reencrypted, just uses http for the instances
+      - so, no cert on instances or cryptography
+    - downside is plaintext data within AWS
+
+ALB Session Stickiness
+  - non-sticky servers need to be stateless, with session handled externally (db or some such thing)
+    - otherwise, you'd be logged unpredictably
+  - stickiness uses AWSALB cookie to retain (and request) a specific instance
+    - not as good, instance can fail or cookie expire (1-7 days, configurable)
+      - a different server is then chosen and process repeats
+      - load balancer can't distribute load as well
+    - kind of a hack it seems?
+
      
 
 
