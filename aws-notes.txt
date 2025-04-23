@@ -168,6 +168,12 @@ Horizontal vs Vertical Scaling
       - or off-host sessions
         - instances are stateless
 
+Event driven architecture
+  - doesn't constantly wait for things
+    - fleet of lambda runners is already up and waiting for ANYTHING
+  - microservices can scale up and down
+  - producers make events, deliver them through event bus to consumers that do work and stop
+
 Domain Registrar
   - Has relationships with major domain registries, which manage top level domains as vested by IANA
   - Registration process:
@@ -2140,8 +2146,20 @@ ALB Session Stickiness
       - load balancer can't distribute load as well
     - kind of a hack it seems?
 
-     
 
+======================
+Lambda
+======================
+
+- Function As A Service
+- define runtime (python version, etc.) to run code inside
+- define amount of memory
+  - more memory, more CPU (linear)
+- max 50MB zipped or 250MB unzipped
+- 512 default /tmp storage
+  - can scale this up
+- can run for up to 15min
+- security done with execution roles (IAM roles)
 
 
 
