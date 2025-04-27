@@ -174,6 +174,10 @@ Event driven architecture
   - microservices can scale up and down
   - producers make events, deliver them through event bus to consumers that do work and stop
 
+Serverless architecture
+  - use as little code as possible
+  - third party services (like google auth + cognito)
+
 Domain Registrar
   - Has relationships with major domain registries, which manage top level domains as vested by IANA
   - Registration process:
@@ -779,12 +783,6 @@ log group is a container of log streams
   - settings are set here, like retention settings
   - can generate metrics from log data
     - looks for patterns, increments metric, can trigger alarms
-
-
-=========================
-Cloudwatch
-=========================
-
 
 Has UI, CLI, and API interfaces (i imagine most services do)
 
@@ -1634,9 +1632,6 @@ Auto Scaling Groups
     - supports EventBridge and SNS
 
 
-
-
-
 ============================
 Elastic Container Service
 ============================
@@ -2193,14 +2188,148 @@ Logging
 
 Invocation Methods
   - Synchronous
-    - CLI or API invokes function and waits for a response
+    - CLI or API or API Gateway invokes function and waits for a response
+      - result is given immediately during request
+    - errors and retries have to be handled client side
+  - Asynchronous
+    - typically when AWS services invoke lambdas
+    - lambda is responsible for retries
+      - configurable between 0 and 2 times
+      - failed retries can be sent to dead letter queue
+    - function needs to be idempotent
+      - guaranteed to run at least once, but network problems, etc. can make them run more than once
+    - results can be sent to additional destination
+  - Event Source Mapping
+    - used on streams and queues that don't support async lambda invocation (DynamoDB streams, SQS, Kinesis, etc.)
+      - stuff where polling is involved
+    - the ESM polls for source data
+    - source data is batched and sent to lambda
+    - needs permissions on the Lambda Execution Role to read data batches, unlike other methods
+
+Versions
+  - code + configuration
+  - immutable, has its own ARN
+  - $Latest alias, custom aliases
+
+Startup time
+  - Cold start: execution context is created, could take 100s of ms
+  - stays warm for an amount of time, context can be used again
+  - have to assume cold start, parallel executions create more contexts
+  - Provisioned Concurrency feature can keep execution contexts warm for you
 
 
+============================
+EventBridge
+============================
+
+- Replacing Cloudwatch Events
+- if X happens or at Y time, do Z
+  - routing based on either pattern matching events or pattern matching times (cron)
+- default event bus is created for account
+  - in EventBridge you can create more, in CWE this is all you get
+  - gets events from all supported AWS services
+  - events are JSON
 
 
+============================
+Simple Notification Service
+============================
+
+- Pub/Sub service
+- Highly Available, regionally resillient
+- Supports SSE
+- Public (need to access public endpoints)
+- coordinates sending messages
+  - 256kb limit
+
+SNS Topics
+  - base entity, controls permissions and configuration
+  - Publishers send messages to topic
+  - Subscribers receive messages
+    - Mobile push notifications, email, http endpoints, SQS, Lambda
+    - all subscribers of a topic receive messages
+      - can filter
+    - fan out pattern has multiple queues respond slightly different to a given message (think multiple encodings)
+    - some kinds of subscribers support delivery status, enables retries
+      - sns handling should be idempotent
+  - Topic Policy is like a resource policy, can enable cross-account access
 
 
+============================
+Step Functions
+============================
 
+- describe a serverless workflow
+
+State Machine
+  - 2 kinds
+    - Standard Workflow
+      - max duration 1 year
+    - Express Workflow
+      - for high volume things
+      - max duration 5 minutes
+  - started via many things (API Gateway, EventBridge, Lambda, Manually)
+  - described via Amazon States Language, a JSON format
+  - gets permissions from IAM role
+  - States are things that occur
+    - SUCCEED/FAIL: end of flow
+    - WAIT: waits for a period or until a point in time
+    - CHOICE: chooses path based on input
+    - PARALLEL: does multiple things at the same time
+    - MAP: does the same thing to multiple list items
+    - TASK: the meat, performs actions with Lambda, SQS, other Step Functions, ECS, more)
+
+
+============================
+API Gateway
+============================
+
+- sits between app and integrations (services)
+- entry point for apps
+- HA, scalable
+- lots of features like auth, throttling, CORS, caching, AWS service integration, more
+- public
+- can connect to AWS or on-prem (or public anywhere) services
+- HTTP, REST (with more features than just HTTP), or WebSocket APIs
+
+Authentication
+  - can natively validate Cognito tokens from client auth
+  - Custom (lambda-based) authentication
+    - includes bearer token
+    - calls lambda authorizer function to validate
+      - this sends back IAM policy and principle identifier
+    - lambda evaluates whether to continue or 403
+
+Endpoint Types
+  - Edge-Optimized
+    - routes to nearest Cloudfront Point Of Presence
+  - Regional 
+    - simple regional endpoint
+    - faster if users are near region (doesn't have to involve CloudFront)
+  - Private
+    - accessible only inside VPC via Interface Endpoint
+
+Stages
+  - prod, dev, etc
+  - one deployment per stage
+  - can roll back per stage
+  - canary deployment for a stage can take a percent of traffic and eventually be promoted
+
+Errors
+  - 4XX Client errors
+    - 400 generic bad request
+    - 403 access denied
+    - 429 throttle limit
+  - 5XX Server errors
+    - 502 bad gateway (backing service returned bad data)
+    - 503 major outage
+    - 504 integration failure, often timeout (29s)
+
+Caching
+  - configured per-stage
+    - size between 500MB and 237GB
+    - default TTL 5min, max 1 hour
+    - can be encrypted
 
 
 
