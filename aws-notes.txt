@@ -2161,8 +2161,39 @@ Lambda
 - can run for up to 15min
 - security done with execution roles (IAM roles)
 
+Networking
+  - Public Networking
+    - default
+    - runs in public AWS space
+    - functions can access public AWS services and the public internet
+    - best performance because generic networking/hardware can be used
+    - can't access vpc without public addressing/security rules
+  - VPC Networking
+    - runs in a VPC
+    - can access allowed things in same VPC
+    - can't access external things like public AWS services (DynamoDB) or internet
+      - like anything else in a VPC, needs more to do so
+        - for internet, NAT Gateway (bc it can't have a public IP) and IGW
+        - for public AWS zone, above or VPC endpoint (better)
+    - used to need ENI auto-created per execution to talk to lambda service VPC
+      - added invocation delay
+    - now, this is optimized and an ENI is made per subnet + SG combo instead
+      - adds 90 seconds or so one-time setup when creating or modifying
 
+Security
+  - Execution roles act like instance roles
+  - Resource policy controls what services and accounts can invoke the lambda
+    - can't manipulate through UI
 
+Logging
+  - Logs from executions go in Cloudwatch Logs 
+    - needs execution role permissions
+  - Metrics like successes, failures, latency go in Cloudwatch
+  - X-Ray integration for distributed tracing of a path through a serverless app
+
+Invocation Methods
+  - Synchronous
+    - CLI or API invokes function and waits for a response
 
 
 
