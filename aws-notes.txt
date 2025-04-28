@@ -2332,6 +2332,52 @@ Caching
     - can be encrypted
 
 
+============================
+Simple Queue Service
+============================
+
+- Public, Fully Managed, Highly Available queue
+- 256kb max message size
+  - just link to big stuff in s3, etc.
+- queue length can trigger lambdas or ASG scaling
+- fan out = consumer is SNS topic w/ multiple queues for parallel processing
+- billed based on requests (1-10 messages < 64kb total)
+- supports KMS SSE
+- access controlled by identity policies or queue (resource) policies
+- consumers poll queue for messages
+  - Short polling consumes a request even if 0 messages
+  - Long polling waits waitTimeSeconds if 0 messages for one to come through, then responds
+    - best practice
+    - up to 20s
+
+
+Visibility Timeout
+  - received messages are hidden for VT
+  - consumer expected to explicitly delete message after processing
+    - If they don't, message reappears after VT for another consumer to pick up
+  - If a message is received too many times without being deleted, they can be added to Dead Letter Queue
+  - 0-12 hours, default 30s
+    - can be changed per-message (probably by the consumer) with changeMessageTimeout
+
+Queue Types
+  - Standard
+    - order is not guaranteed, best effort
+    - at least once delivery, app has to accomodate more than once
+    - scales as high as you need
+  - FIFO
+    - order is guaranteed
+    - exactly once delivery
+    - must have ".fifo" suffix
+    - limited to 3000 messages per second w/ batching, 300 without
+
+Delay Queues
+  - postpone delivery of messages
+  - messages are invisible (like with VT) for an initial delay 
+    - can be set per-message when message is made
+
+
+
+
 
 
 
