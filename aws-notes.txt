@@ -2341,6 +2341,8 @@ Simple Queue Service
   - just link to big stuff in s3, etc.
 - queue length can trigger lambdas or ASG scaling
 - fan out = consumer is SNS topic w/ multiple queues for parallel processing
+- usually used with one producer (group) and one consumer (group)
+  - used for decoupling tasks, not data ingestion (that's for kinesis)
 - billed based on requests (1-10 messages < 64kb total)
 - supports KMS SSE
 - access controlled by identity policies or queue (resource) policies
@@ -2350,12 +2352,13 @@ Simple Queue Service
     - best practice
     - up to 20s
 
-
 Visibility Timeout
   - received messages are hidden for VT
   - consumer expected to explicitly delete message after processing
     - If they don't, message reappears after VT for another consumer to pick up
   - If a message is received too many times without being deleted, they can be added to Dead Letter Queue
+    - ReceiveCount, maxReceiveCount
+    - retention period is based on original message enqueue time
   - 0-12 hours, default 30s
     - can be changed per-message (probably by the consumer) with changeMessageTimeout
 
@@ -2376,24 +2379,52 @@ Delay Queues
     - can be set per-message when message is made
 
 
+============================
+Kinesis
+============================
 
+- scalable streaming service
+- public, HA
+- near infinite data rates sent into a stream
+- stream is made of multiple shards, each with 1MB ingestion and 2MB consumption
+  - more shards more moneys
+- multiple consumers can access data
+- lambdas can be configured to invoke when data is added to stream
+- 24 hour moving window of data
+  - can be set up to a year for additional cost
+  - this introduces a concept of persistence
+- storage included
+- data stored using 1MB Kinesis Data Records
 
+Kinesis Firehose
+  - allows persistence past rolling window
+  - fully serverless, resilient
+  - near real time (60 seconds)
+  - can transform data on the fly with a lambda (can affect performance)
+  - can deliver data to
+    - http endpoint
+    - splunk
+    - redshift (uses intermediate s3 bucket)
+    - elasticsearch
+    - s3
+  - can deliver from kinesis stream or can accept data directly
+  - billed by volume
 
+Kinesis Data Analytics
+  - processes data realtime using SQL
+  - ingests from kinesis data stream or firehose, can also reference data in s3
+  - data can be sent to firehose (and beyond), kinesis data streams, lambda
+  - for adjusting data from input to output
+  - kinda expensive
+  - useful for elections, esports, leaderboards, security & response, etc
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Kinesis Video Streams
+  - ingest video data from phones, drones, or non-video time-serialized radar, thermal, etc
+  - can access frame-by-frame or as needed
+  - persist and encrypt
+  - can't access directly from EBS, S3, or other storage means; only KVS API
+  - integration with Rekognition and Connect
+  - 
 
 
 
