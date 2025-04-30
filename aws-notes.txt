@@ -2424,7 +2424,81 @@ Kinesis Video Streams
   - persist and encrypt
   - can't access directly from EBS, S3, or other storage means; only KVS API
   - integration with Rekognition and Connect
-  - 
+
+
+==============
+Cognito
+==============
+
+- Authentication, Authorization, and user management for web apps
+
+User Pools
+  - sign in and get a JSON Web Token
+  - can't be used to access most AWS Resources (API gateway takes them tho)
+  - integrated with 3rd party sign ins like google and fb
+  - greater UI customization than Identity Pools
+
+Identity Pool
+  - can swap user pool and other external identities for AWS credentials
+    - if external, this is identity federation
+  - can offer unauthenticated access to services
+  - assume IAM roles on behalf of identity
+  - needs to be configured to support each external identity provider you want
+    - can have single provider be user pool, though
+
+- The thing to do is have people log into User Pools and invisibly use that to log into identity pool.
+
+
+==============
+Glue
+==============
+
+- Serverless Extract Transform Load
+  - unlike the serverful (EMR Cluster) datapipeline product
+- moves and transforms data from source to dest
+  - glue jobs can be manual or initiated from evenbridge
+- Source stores: S3, RDS, JDBC Compatible DB, DynamoDB
+- Source streams: Kinesis, Kafka
+- Targets: S3, RDS, JDBC
+
+Data Catalog
+  - persistent metadata about data sources in region
+    - like a database of schemas
+  - one catalog per region per account
+  - used by Athena, Redshift Spectrum, EMR, Lake Formation
+  - avoids data silos by improving visibility of data structures
+  
+
+==============
+MQ
+==============
+
+- queues and topics (one to one or one to many)
+- open source message broker, based on Apache ActiveMQ
+- for migrating existing queues and topics 
+- related keywords: JMS API, AMQP, MQTT, OpenWire, STOMP
+- not public, private networking required
+- no native AWS integrations
+
+
+==============
+AppFlow
+==============
+
+- managed integration service
+- exchange data between applications (connectors) using flows
+  - source and destinations
+- public endpoints, can use PrivateLink
+- Custom Connector SDK lets you build connector, popular apps already supported
+
+Connection
+  - stores config & credentials to access application
+  - configures source mapping and transform
+
+
+
+
+
 
 
 
