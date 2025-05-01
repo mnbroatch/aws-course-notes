@@ -300,6 +300,12 @@ Databases
         - NoSQL tends to be this
         - DynamoDB's basic operation, but can work acid-like with more advanced features
 
+HTTPS(ecure)
+  - http is simple and insecure
+  - https is a layer to wrap http
+  - in-transit encryption
+  - certificates prove identity (you aren't at a spoofed DNS)
+
 
 ======================
 Virtual Private Cloud
@@ -2496,8 +2502,60 @@ Connection
   - configures source mapping and transform
 
 
+==============
+CloudFront
+==============
 
+Architecture
+  - 
 
+Origin
+  - location of content
+  - classified into S3 or everywhere else
+
+Distribution
+  - base unit of CF configuration
+  - gets deployed to CF network
+  - choose security policy (TLS version), HTTP versions, certificates
+
+Behaviors
+  - subconfigurations of Distributions
+  - path pattern matching for different configurations
+  - choose http methods, whether to accept HTTP, 
+  - can restrict access to require signed urls or signed cookies or something
+  - associate lambda at edge functions
+
+Edge Location
+  - local cache for consumers to access
+  - in more diverse locations than Regions, which are in major cities
+  - not regions, can't deploy ec2 into, for instance
+
+Regional Edge Cache
+  - larger than edge location, larger cache
+  - another cache layer, more like regions in terms of location + quantity
+    - so if your server is only in one region, the benefit is large elsewhere
+  - for infrequent access where smaller edge locations cache would miss
+    - edge misses fall back to RECs, misses then fall back to origin
+  - supports Amazon Certificate Manager for https
+  - for downloads only, not uploads
+
+TTL
+  - default TTL is 24h
+  - on cache expiry, request goes to origin and can receive 304 not modified
+    - TTL is reset
+  - origin can set per-object TTL with headers. doesn't override min/max on behavior
+    - Cache-Control max-age
+    - Cache-Control s-maxage (same as above)
+    - Expires
+
+Invalidations
+  - expires everything matching some path pattern on a distribution
+  - takes time to do
+  - costs money (!)
+  - versioned filenames (thing_v1.jpg) are an alternative
+    - bypasses browser cache
+    - better logging
+    - but app has to be updated
 
 
 
