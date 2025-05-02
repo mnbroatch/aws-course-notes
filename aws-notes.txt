@@ -305,6 +305,10 @@ HTTPS(ecure)
   - https is a layer to wrap http
   - in-transit encryption
   - certificates prove identity (you aren't at a spoofed DNS)
+    - they are signed by an authority the browser trusts. DNS name is tied to certificate
+    - certificate is used to generate a session key that a man in the middle couldn't know
+      - this is generated via client-generated random data (pre-master) that is encrypted with the public key (it doesn't help mitm decrypt stuff or see session key)
+      - private key can decrypt the pre-master and both can use additional randomness to generate the same session key
 
 
 ======================
@@ -2506,12 +2510,34 @@ Connection
 CloudFront
 ==============
 
-Architecture
-  - 
-
 Origin
   - location of content
-  - classified into S3 or everywhere else
+  - multiple origins can form origin group for HA
+    - backup origin used if primary fails
+  - classifications
+    - S3
+      - static website hosting enables different features from disabled
+      - can set to be only accessible from CF distribution
+      - viewer and origin side protocols must match (https for both, etc) 
+      - can have custom headers
+      - real-time kinesis logging possible
+      - can restrict viewer access to require signed urls or signed cookies using trusted signer or trusted key group
+      - default root object usually set to index.html
+    - AWS Media Store Container Endpoint
+      - exists
+    - Everything else (custom origins, ec2 for instance)
+      - can choose protocol and SSL protocol version, 
+      - can choose port
+      - can use custom headers to tag data as coming from CF
+        - could also use ip ranges of CF (they are public but change though)
+
+Origin Access Identity
+  - used to set origin to be only accessible from CF distribution
+    - S3 doesn't have a concept of "allow from a CF dist", needs an identity, managed here with Origin Access Control or legacy Origin Access Identity
+    - this is used in Bucket Policy
+  - only works for non-static-website-hosting S3 origins
+  - Cloudfront becomes OAI, able to use in bucket policy
+  - often the only consumer of origin
 
 Distribution
   - base unit of CF configuration
@@ -2521,9 +2547,22 @@ Distribution
 Behaviors
   - subconfigurations of Distributions
   - path pattern matching for different configurations
-  - choose http methods, whether to accept HTTP, 
-  - can restrict access to require signed urls or signed cookies or something
+  - choose http methods, whether to accept HTTP
   - associate lambda at edge functions
+
+Private Behaviors
+  - require signed url or cookie
+  - multiple behaviors means you can reroute private route to a login page, for instance
+  - old way: CloudFront Key is made by an Account Root User
+    - key added to account, account is made a trusted signer
+  - new way: create trusted key groups and make those the trusted signer
+    - don't need acct root user to make
+  - Signed URLs
+    - provide access to one object
+    - useful if client doesn't support cookies
+  - Signed Cookies
+    - can provide access to groups of files, all of a type
+    - can control URL used
 
 Edge Location
   - local cache for consumers to access
@@ -2557,8 +2596,38 @@ Invalidations
     - better logging
     - but app has to be updated
 
+SSL/TLS
+  - CNAME record created with distribution blahblahblah.cloudfront.net
+  - Alternate Domain Names are more CNAME records you can specify for custom domains
+    - point to CF with DNS provider
+    - need to verify ownership by uploading cert
+    - you can't just point DNS to default CNAME because it couldn't prove to browser that it's allowed to serve https content for alternate domain
+  - both browser -> CF and CF -> origin need public certs for https
+    - origin can be set up to use http though
+    - s3 origin handles it for you
+    - ALB origin can use ACM
+    - EC2 origin needs external generated cert
 
+Server Name Iden
+  - historically, 1 https site per ip
+    - this is because multiple sites could only be differentiated at http layer 7, after connection has already been made
+      - appropriate cert couldn't be given when needed
+    - SNI is an extension to TLS that allows host specification at lower layer
+      - Very old browsers don't support it, so CF has dedicated IP for extra money (600 bucks a month per distribution!)
 
+============================
+AWS Certificate Manager
+============================
 
-
+- regional
+  - certs can't leave region
+  - need cert in ACM in each region you use ALB
+  - ALWAYS USE us-east-1 FOR CLOUDFRONT CERTS
+    - this gets replicated to edge locations
+- can act as Certificate Authority, either public for internet browsers or private for internal consumers
+  - Private required client to trust CA (public amazon CA is trusted by most)
+- can import or generate certificates
+  - generated ones can auto-renew
+- only works with ALBs and CloudFront (maybe some other edge things)
+  - not EC2! That direct connection to instance can't be managed by Amazon
 
