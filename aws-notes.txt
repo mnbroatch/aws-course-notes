@@ -427,7 +427,6 @@ VPC Router
       - necessary for cross-vpc communication
       - necessary for private subnet to send traffic out to internet
 
-
 Internet Gateway
   - Region Resillient
   - IGW can have 1 or 0 VPCs and vice versa
@@ -442,13 +441,45 @@ Internet Gateway
     - ONLY V4. V6 is natively publically routeable
     - changes packet destination or source ip to public ip
     - this is why instance OS doesn't know public ip address
+  - Egress-only
+    - special kind of IG, allows only inside-to-outside for IPv6
+    - problem is solved with NAT for ipv4 but NAT doesn't work with v6
+    - architecturally, subnet route table default route ::/0 points to EOIG
 
 Bastion Host = Jumpbox
   - instance in subnet
   - manage routing, sometimes the only way into highly secure private VPCs
 
-      
+Flow Logs
+  - capture packet metadata
+  - can capture on accepted, rejected, or all packets
+  - can be applied to whole VPC, one Subnet, or one ENI
+  - not real-time
+  - can go to s3, cloudwatch logs, or athena (sql queries, "schema on read" whatever that means)
+  - each capture entry is a set of fields like "bytes", "srcaddr", "dstport", "protocol", and "action"
+    - Action is accept, reject
+    - protocol is 1:ICMP, 6:TCP, 17:UDP
+  - exclude metadata service, time server requests, DHCP, Amazon DNS servers and Amazon Windows License
 
+- VPC Endpoints
+  - Gateway Endpoint
+    - special way for private networks to access S3 and DynamoDB
+    - created per service per region
+    - prefix list (aws-managed list of service ips) is added to associated subnets
+      - point to the GE (instead of the internet gateway)
+    - Endpoint policy controls what buckets GE can access, for instance
+    - can't access cross-region services (bucket in other region)
+    - enables private s3 buckets that never touch the internet
+    - enables completely offline vpcs that can still use s3
+    - only accessible from inside vpc
+  - Interface Endpoint
+    - provide private access to non-DynamoDB services
+    - take the form of ENIs inside Subnets - not HA
+    - can use security groups in addition to endpoint policies
+    - only ipv4 and TCP
+    - uses PrivateLink, which allows things (even 3rd party things) to be injected into VPC
+    - endpoint is given a regional and zonal DNS name app can use
+      - or PrivateDNS, a Route53 hosted zone that overrides default service dns names with endpoint ones
 
 
 ==============
@@ -2608,12 +2639,25 @@ SSL/TLS
     - ALB origin can use ACM
     - EC2 origin needs external generated cert
 
-Server Name Iden
+Server Name Identification
   - historically, 1 https site per ip
     - this is because multiple sites could only be differentiated at http layer 7, after connection has already been made
       - appropriate cert couldn't be given when needed
     - SNI is an extension to TLS that allows host specification at lower layer
       - Very old browsers don't support it, so CF has dedicated IP for extra money (600 bucks a month per distribution!)
+
+Lambda@Edge
+  - adjust data between viewer and origin
+  - only python and node are supported
+  - run in public zone
+  - lambda layers not supported
+  - different size and time limits from normal lambdas
+  - can run at 4 lifecycle hooks: viewer request, origin request, origin response, viewer response
+    - viewer side limits are more strict than origin side
+  - use cases
+    - A/B testing: modify viewer request to hit one of multiple URLs
+    - origin migration, high DPI versions, country specific content: modify origin request
+
 
 ============================
 AWS Certificate Manager
@@ -2630,4 +2674,35 @@ AWS Certificate Manager
   - generated ones can auto-renew
 - only works with ALBs and CloudFront (maybe some other edge things)
   - not EC2! That direct connection to instance can't be managed by Amazon
+
+
+=======================
+Global Accelerator
+=======================
+
+- makes things faster for global users (reduces hops)
+- Example
+  - starts with 2 anycast IP Addresses
+    - as opposed to the Unicast IP addresses we normally see
+    - allow a single ip to be in multiple locations
+    - routing moves traffic to closest location
+  - these 2 ip adresses map to 3 GA edge location (there's overlap)
+  - any of the 3 can service requests for either IP, closest does
+  - from those edge locations, request does the rest of its stuff
+    - path to the destination (some AWS service) is AWS-managed and faster
+  - (why doesn't this example use 1 ip address and 2 servers)
+- unlike cloudfront, can handle TCP/UDP (non-http)
+
+
+
+
+
+
+
+
+
+
+
+
+
 
