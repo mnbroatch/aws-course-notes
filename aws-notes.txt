@@ -2822,6 +2822,19 @@ Direct Connect
 - Billing
   - hourly cost for port and outbound data
 
+Resilience
+  - by default, single cable from your rented DX port to whatever. not HA!
+  - also "last mile" connection to on-prem environment not HA
+  - improve by getting 2 DX ports, they'll be on different AWS DX routers
+    - connect each to a different customer DX router, connected to a different on-prem router
+    - but
+      - the 2 connections to on-prem could be the same cable path
+      - the buildings could collapse
+    - so
+      - 2 customer premises buildings
+      - 2 DX locations
+    - can go crazy and do 2 routers at 2 DX locations
+
 
 
 
