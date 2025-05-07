@@ -300,6 +300,11 @@ Databases
         - NoSQL tends to be this
         - DynamoDB's basic operation, but can work acid-like with more advanced features
 
+Encryption
+  - asymmetric: private key decrypts, public key encrypts
+  - symmetric: one key for encrypts and decrypts
+  - the aim of most internet encryption protocols is to use slow asymmetric encryption to securely establish faster symmetric encryption
+
 HTTPS(ecure)
   - http is simple and insecure
   - https is a layer to wrap http
@@ -309,6 +314,36 @@ HTTPS(ecure)
     - certificate is used to generate a session key that a man in the middle couldn't know
       - this is generated via client-generated random data (pre-master) that is encrypted with the public key (it doesn't help mitm decrypt stuff or see session key)
       - private key can decrypt the pre-master and both can use additional randomness to generate the same session key
+
+IPSEC
+  - group of protocols to create tunnels in insecure networks
+  - authenticatd and encrypted
+  - concept of "Interesting Traffic"
+    - if no interesting traffic, tunnels are torn down until more IT is detected
+  - 2 phases
+    - Internet Key Exchange Phase 1
+      - heavy, slow, asymmetric
+      - authentication with password or cert
+      - create shared symmetric key
+      - results in IKE Security Association (Phase 1 Tunnel)
+        - actually, one in each direction
+      - uses Diffe-Hellman Key Exchange *shrug*
+        - essentially, each side can generate the same key independently, using their own private and other side's public keys
+    - IKE Phase 2
+      - establishes agreed upon encryption method and keys used for the actual data transfer
+        - pick best method that they both support
+      - DH key and other exchanged data (like random numbers) is used to create the actual stronger IPSEC key
+      - results in Phase 2 Tunnel running on top of phase 1
+  - Phase 2 can be torn down and still leave Phase 1 up for reestablishing phase 2 efficiently
+
+IPSEC VPNs
+  - 2 kinds, differ in how they detect Interesting Traffic
+    - Policy Based
+      - rule sets match traffic, use SA pair
+      - can have different security settings for different traffic between same peers
+        - these phase 2 settings can all be based on same phase 1 tunnel
+    - Route Based
+      - matches CIDR range, one SA pair per range (prefix)
 
 
 ======================
@@ -461,7 +496,7 @@ Flow Logs
     - protocol is 1:ICMP, 6:TCP, 17:UDP
   - exclude metadata service, time server requests, DHCP, Amazon DNS servers and Amazon Windows License
 
-- VPC Endpoints
+VPC Endpoints
   - Gateway Endpoint
     - special way for private networks to access S3 and DynamoDB
     - created per service per region
@@ -480,6 +515,20 @@ Flow Logs
     - uses PrivateLink, which allows things (even 3rd party things) to be injected into VPC
     - endpoint is given a regional and zonal DNS name app can use
       - or PrivateDNS, a Route53 hosted zone that overrides default service dns names with endpoint ones
+
+VPC Peering
+  - direct encrypted network link between exactly 2 VPCs
+    - not transitive
+  - can be different regions & accounts
+  - can optionally make public service hostnames resolve to private addresses
+    - doesn't work if there's CIDR block overlap
+    - so, can use same hostname for an EC2 instance, say, inside and outside network
+    - reasons not to: the other VPC now having your internal IPs, potential name conflicts
+      - also it might encourage bad practices like accessing internals unnecessarily
+  - same-region Security Groups can reference peer SGs instead of IP ranges
+  - need routing configuration sending traffic to peering gateway object (on both sides)
+    - and obviously NACLs and SGs need to allow traffic
+  - 
 
 
 ==============
@@ -2694,11 +2743,84 @@ Global Accelerator
 - unlike cloudfront, can handle TCP/UDP (non-http)
 
 
+============================
+Border Gateway Protocol
+============================
+
+- coordinates traffic between black box Autonomous Systems
+  - this is e(xternal)BGP, there's also iBGP
+- operates on TCP/179 (reliable with error correction)
+
+Autonomous System
+  - collection of routers controlled by one entity
+  - one thing as far as BGP is concerned, big abstraction
+  - assigned a number by IANA
+    - originally 16bit, now there are 32bit ASNs
+    - last hundred or so are reserved for private use internal to networks
+  - connections have to be set up manually
+  - learns about network topology and shares that info with its peers
+    - this lets core internet players share best shortest to a destination --ASPATH
+      - also aware of longer paths so it's resilient
+      - shortest doesn't mean best, some could be slow
+        - ASPATH prepending lets you manually override this
+          - kinda works like css specificity trick, append dupe ASNs to path in route table: 202,202,202,i (i at end means route was originated locally)
+            - who cares how it works tho lol
+ 
+
+============================
+Site-to-Site VPN
+============================
+
+- logical connection between VPC and on-prem network
+- encrypted using IPSEC
+- mostly running over public internet
+- HA
+- less than an hour to provision
+
+- Virtual Private Gateway
+  - can be target in route tables, associated with a single VPC
+  - has 2 physical endpoints in different AZs
+    - these both connect to Customer Gateway with VPN Tunnel for HA (on amazon side)
+
+- Customer Gateway
+  - refers to an on-premises physical router the VPN connects to
+  - also used to refer to the aws config that represents it
+  - for full HA, 2 of these connect to V(P)GW
+
+- VPN
+  - the tunnel connecting CGW with VGW through the VGW endpoints
+  - 2 kinds
+    - Static
+      - manually configure on on-prem and AWS with info about other's addresses
+    - Dynamic
+      - needed for multi-connection failover and load balancing, and Direct Connect
+      - once connection is made via BGP, internal networking can change and tell the other side
+        - route propagation means the routes that the VGW learns also get added to the VPC route table
+      - needs BGP support
+  - Limitations
+    - 1.25Gb/s speed cap
+      - might be practically lower bc of customer router limitations and encryption overhead
+    - latency and variability of public internet (number of hops)
+  - Billing
+    - hourly, data out
+    - external on-prem data rates apply
+  - can be used as a backup for Direct Connect and other technologies
 
 
+============================
+Direct Connect
+============================
 
-
-
+- physical connection between business -> DX location -> AWS Region
+- 1, 10, or 100 Gbps standard
+  - can be smaller if using 3rd party that shares ports between clients
+- physical port at DX location
+  - it connects to something else at location, maybe your own servers or maybe a comms provider
+- highest hybrid networking speed
+- long provisioning time of laying cables
+- can access vpcs and public AWS, no public internet access
+- Billing
+  - hourly cost for port and outbound data
 
 
 
