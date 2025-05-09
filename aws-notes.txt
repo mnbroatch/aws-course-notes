@@ -509,6 +509,7 @@ VPC Endpoints
     - only accessible from inside vpc
   - Interface Endpoint
     - provide private access to non-DynamoDB services
+      - example: Instance Connect has an endpoint you can deploy to access private instances
     - take the form of ENIs inside Subnets - not HA
     - can use security groups in addition to endpoint policies
     - only ipv4 and TCP
@@ -520,6 +521,7 @@ VPC Peering
   - direct encrypted network link between exactly 2 VPCs
     - not transitive
   - can be different regions & accounts
+    - cross-account peering connection is an invite/accept thing
   - can optionally make public service hostnames resolve to private addresses
     - doesn't work if there's CIDR block overlap
     - so, can use same hostname for an EC2 instance, say, inside and outside network
@@ -528,7 +530,6 @@ VPC Peering
   - same-region Security Groups can reference peer SGs instead of IP ranges
   - need routing configuration sending traffic to peering gateway object (on both sides)
     - and obviously NACLs and SGs need to allow traffic
-  - 
 
 
 ==============
@@ -1307,7 +1308,7 @@ Security Group
   - supports logical resources including itself and other security groups
     - can set "source" to another security group's id
       - matches any source with the other sg attached (kinda weird)
-      - can only reference SGs in same vpc
+      - can only reference SGs in same vpc or peered vpcs
       - scales well
     - can set "source" to same security group's id
       - anything with sg attached can talk to each other or whatever
@@ -1330,6 +1331,7 @@ Network Address Translation
     - Web tier vpc has NAT Gateway
     - App tier route table points traffic to nat gateway instead of internet gateway
     - NAT Gateway records private source IP, other data in translation table
+      - table entries (requests) are differentiated by choosing a port to receive response on
     - Changes source IP to its own, sends data to Internet Gateway and out
     - gets reponse, uses translation table to adjust response destination back to private IP
   - AZ Resilient (deploy into a region)
@@ -2819,6 +2821,7 @@ Direct Connect
 - highest hybrid networking speed
 - long provisioning time of laying cables
 - can access vpcs and public AWS, no public internet access
+- not encrypted
 - Billing
   - hourly cost for port and outbound data
 
@@ -2834,6 +2837,60 @@ Resilience
       - 2 customer premises buildings
       - 2 DX locations
     - can go crazy and do 2 routers at 2 DX locations
+
+Virtual Interface
+  - virtual point-to-point ethernet link between DX location and AWS
+  - 3 kinds
+    - Private
+      - connects to things in private VPC
+    - Public
+      - connects to public AWS services
+      - can connect to vpc using vpn for encrypted connection
+    - Transit
+      - simplifies on-prem to AWS, and VPC to VPC networking
+        - nontransitive VPC peering and HA redundant vpns create a lot of connections to manage and scales badly
+      - account-level endpoint that can route traffic to VPCs
+        - specify subnet in each relevant VPC to deploy VPC Attachment, similar to interface endpoints
+      - can even attach TGs to TGs in peered VPCs in other accounts
+      - supports Resource Access Manager cross-account access
+      - needs route tables pointing to it
+
+
+============================
+Storage Gateway
+============================
+
+- Runs either as standalone hardware or virtual machine (more common) on-premises
+- presents storage using iSCSI, NFS, or SMB
+- connects to EBS, S3, and Glacier
+- useful for migration, running out of on-prem storage, DR, legacy backup replacement
+
+Volume Gateway
+  - 2 modes
+    - Stored Mode
+      - everything is stored on-prem locally with SG VM
+      - Upload buffer
+        - everything written to disk is copied here and then copied async over network to AWS storage
+      - good for full volume backups to ebs snapshots
+        - these snapshots are great for DR, can be recovered 
+      - doesn't extend data capacity, only for copies
+    - Cached Mode
+      - data primarily stored on AWS
+        - special hidden AWS-managed S3 bucket
+      - local cache for efficiency
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
