@@ -2877,10 +2877,23 @@ Volume Gateway
     - Cached Mode
       - data primarily stored on AWS
         - special hidden AWS-managed S3 bucket
-      - local cache for efficiency
+      - local cache for efficiency, caches frequently accessed data
+      - infrequently accessed things can be slow
+      - good for data center extension into AWS
 
+Tape Gateway
+  - replaces on-prem tape library
+  - Virtual Tape Library presents as a physical tape library via iSCSI
+    - S3 normal used for library
+      - no robot arms :(
+    - Glacier used for Shelf
+      - anywhere not in library, where tapes are stored not in-use
+    - can eject tapes from library to shelf
 
-
+File Gateway
+  - access s3 files in normal filesystem
+  - individual file-level vs overall block volume level
+  - Mount points in NFS and SMB
 
 
 
