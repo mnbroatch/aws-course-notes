@@ -2894,10 +2894,43 @@ File Gateway
   - access s3 files in normal filesystem
   - individual file-level vs overall block volume level
   - Mount points in NFS and SMB
+  - multiple on-prem Fileshares connect to a bucket, which creates a Bucket Link
+  - no file locking, best to have only one writing fileshare and others be read-only
 
 
+============================
+Snowball
+============================
+
+- move large amount of data to or from AWS
+
+Snowball
+  - physical device
+  - each device is 50 or 80TB
+  - overall effective in the range of transferring 10TB-10PB total
+  - Data encryption uses KMS
+  - needs networking
+
+Snowball Edge
+  - like above but
+  - comes with compute
+  - higher capacity
+  - faster max networking speed
+  - has variants: Storage Optimized (with ec2), Compute Optimized, Compute with GPU
+
+Snowmobile
+  - portable data center on a truck
+  - good for > 10PB data
+  - impractical for multiple locations
+  - up to 100PB per truck
 
 
+============================
+Directory Service
+============================
+
+- Stores objects (Users, Groups, Computers, Servers, File Shares) with a structure (tree)
+- Common in Windows environments
 
 
 
