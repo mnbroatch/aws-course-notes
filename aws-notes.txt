@@ -85,9 +85,25 @@ Containers
     - can upload and download container images
     - can be public or private
 
+Distributed Denial Of Service Attacks
+  - 3 kinds
+    - Network Volumetric
+      - Layer 3
+      - Saturate Capactiy with raw network data
+    - Network Protocol (Transport)
+      - Layer 4
+      - example: TCP SYN Flood
+      - leave a bunch of connections open
+      - does not affect RAM, CPU, etc. but new connections can't be made
+      - could be combined with volumetric
+    - Application Layer
+      - Layer 7
+      - example: web request flood
+        - site.com?search=hugeresponse
+
 Firewalls
-  - 2 kinds
-    - Stateless
+  - 3 kinds
+    - Stateless (layer 3/4)
       - focuses on inbound and outbound
       - for https, say, client uses random port to connect to server's known 443 port.
         - "connection" is 2 requests: request and response
@@ -95,11 +111,16 @@ Firewalls
           - server probably has to allow inbound traffic from all random ports on 443
           - from client's perspective, request is outgoing and response is incoming
           - vice versa for server
-    - Stateful
+    - Stateful (layer 5)
       - focuses on request and response
       - smart enough to know that if request is allowed, response should be
         - knows that a given response is related to request, so only request rule is necessary
         - automatically opens response port when it makes a request
+    - Application (layer 7)
+      - understands higher layer things like http and other protocols, content
+      - can scan for protocol-specific attacks, other unwanted traffic
+        - https connection might terminate at firewall, stripping encryption so it can be scanned
+        - can disallow facebook or dropbox, for instance
 
 Shared Responsibility Model
   - what does user control vs AWS
@@ -2929,8 +2950,261 @@ Snowmobile
 Directory Service
 ============================
 
-- Stores objects (Users, Groups, Computers, Servers, File Shares) with a structure (tree)
-- Common in Windows environments
+Directories
+  - Stores objects (Users, Groups, Computers, Servers, File Shares) with a structure (tree)
+  - Common in Windows environments
+  - can sign into multiple devices with the same un/pw (think a computer lab)
+    - centralized management of assets
+  - some providers are Microsoft Active Directory Domain Services, SAMBA (open source alternative)
+
+Directory Service
+  - AWS-managed, like RDS is for DBs
+  - Runs in VPC
+  - HA by deploying into multiple AZs
+  - windows EC2 instances can join directory
+  - some services like Amazon Workspaces require directory
+  - can be
+    - Simple AD (standalone)
+      - SAMBA 4, open-source
+      - supports up to 500 in small mode or 5000 in large mode
+    - AWS Managed Microsoft AD
+      - still has direct presence in AWS
+      - can establish trust with on-prem
+        - needs to occur over private networking (VPN or Direct Connect)
+        - users can cross-access directory objects but they aren't synced
+        - AWS can still access local (on AWS) directory if VPN fails, trust has been established (which does local mean here)
+        - supports advanced MSAD features like schemas
+    - AD Connector
+      - proxy mode to use on-prem directory with services that need directory service
+      - good if you already have directory and want to use like one AWS service that needs DS
+      - services will fail if VPN fails
+
+
+============================
+Transfer Family
+============================
+
+- Transfer to/from S3 and EFS via provisioned transfer servers
+- Multi AZ, Resiliant, scalable
+- Good if you need to use protocols other than native S3 and EFS.
+  - FTP - unencrypted
+  - FTPS - FTP with TLS encryption
+  - SFTP - transfer over SSH
+  - Applicability Statement 2 - Structured Business to Business Data
+- Identities - Service managed, Directory Service, Custom (lambda, APIGW)
+  - no service-managed for FTP and FTPS
+- Supports Managed File Transfer Workflows - serverless file workflow engine
+
+Endpoints
+  - Public
+    - nothing to configure
+    - only supports SFTP
+    - dynamic IP managed by AWS, so use DNS
+    - can't control access via IP lists
+  - VPC w/ Internet
+    - inside VPC
+    - Supports SFTP, FTPS, AS2
+    - Supports NACLs and SGs
+    - can access via VPN/DX
+    - can access via internet using the Elastic public IP
+    - Static private IP
+  - VPC Internal Only
+    - like above, but also supports FTP
+    - no Elastic public IP
+
+- Billed for provisioned server per hour + data transferred
+
+
+============================
+DataSync
+============================
+
+- Huge scale data transfer to and from AWS
+- Good for migrations, archival, DR/BC
+- keeps metadata (permissions, timestamps)
+- built-in data validation
+- Scalable, 10Gbps per agent (~100TB/day)
+- Supports bandwidth limiters to avoid "link saturation" (not be a network speed hog)
+- Supports incremental and scheduled transfers
+- Supports compression and encryption
+- Integrates with S3, EFS, FSx (for windows)
+  - can even do service-to-service transfers like cross-region EFS-EFS
+- Pay as you go per GB
+
+Architecture
+  - Tasks define what is being synced, how fast, src and dest (both are Locations)
+    - NFS and SMB are considered Locations
+  - DataSync Agent runs on VM or the like and connects to NAS/SAN storage via NFS or SMB, communicates with DataSync endpoint
+
+
+============================
+FSx for Lustre
+============================
+
+Lustre itself
+  - File system designed for High Performance Compute on Linux clients
+  - FSx is the AWS-managed service using it
+  - Supports POSIX style permissions
+  - Metadata like filenames, timestamps are stored on the Lustre FS's single Metadata Server Target
+  - data is split over multiple Object Storage Targets
+    - 1.17TiB each
+
+FSx for Lustre
+  - Good for Big Data, Machine Learning, Financial Modelling
+  - 100s of GBps throughput and sub-millisecond latency
+  - 2 work modes
+    - Scratch
+      - highest short term performance
+      - no replication or HA
+      - hardware failure loses some data
+        - larger file system means more points of failure
+    - Persistent
+      - longer-term
+      - single AZ HA
+      - self-healing
+  - Accessible via private networking
+  - When creating the file system, can associate with S3 bucket
+    - Files are visible but lazy-loaded into FSx
+    - data can be written back to bucket with hsm_archive command (manual or triggered)
+    - Processing happens on the Lustre FS, separate from this bucket!
+  - baseline performance based on size
+    - Scratch: 200MB/s per TiB of storage
+    - Persistent: 50, 100, or 200MB/s per TiB of storage (pay more for more)
+    - earn credits for going below baseline, consume credits for going above
+      - can burst using credits up to 1300MB/s per TiB
+  - min 1.2TiB, additional increments of 2.4TiB
+  - can back up to S3 manually or automatic with 0-35 days retention
+
+Architecture
+  - EC2 clients have Lustre software installed to read and interact with managed FSx for Lustre
+  - FSx for Lustre deploys Lustre file servers that handle storage requests and have caching
+    - parallel processing goes brrr
+  - one Instance Endpoint ENI deployed in VPC to talk to FSxfL
+  - writes and cache misses are limited by storage IOps
+  - cache hits are limited by network speeds
+
+
+============================
+FSx for Windows File Server
+============================
+
+- Native Windows Fileshares
+- Integrates with windows environments
+  - Directory Service AD or Self-managed AD (Active Directory)
+- Single or Multi-AZ
+  - Single mode is still HA against normal hardware failure
+- Scheduled and on-demand backups
+- Accessible via Private Networking
+
+- Native Windows Filesystem means it supoprts features like deduplication, Distributed File System, KMS at rest and enforced encryption in transit
+- supports volume shadow copies (file level versioning)
+- accessed via SMB
+- performant
+- windows permissions model
+
+
+============================
+Secrets Manager
+============================
+
+- Shares functionality with Parameter Store
+- designed for priviledged data
+- uses lambda to support auto-rotation
+  - has versioning
+- directly integrates with RDS and other services
+- encrypted at rest
+- uses IAM
+
+
+=========================
+AWS Config
+=========================
+
+- Monitors and records changes to resources over time
+- good for audits and compliance
+- doesn't prevent changes
+- regional, but can be configured for cross-region or cross-account
+- can generate events and SNS notifications
+  - Config rules evaluate whether resource is compliant
+  - changes in compliance could go through EventBridge > Lambda to fix problem
+    - can also trigger SSM runbook instead of lambda
+- stores change log in S3 Config Bucket
+  - changes create Configuration Items
+
+
+=========================
+AWS Shield
+=========================
+
+- DDOS protection
+- 2 modes
+  - Standard
+    - Free
+      - automatically enabled at the network perimeter (edge or VPC)
+      - best protection with R53, CloudFront, and Global Accelerator
+  - Advanced
+    - $3000 per month per AWS Organization
+    - 1yr minimum
+    - data out is extra charge
+    - protects R53, CloudFront, and Global Accelerator, and additionally EIPs (like with EC2), ALBs, CLBs, NLBs
+    - Not automatic, must configure in Shield Advanced or AWS Firewall Manager Shield Advanced Policy
+    - cost protection for things that should be but aren't mitigated
+      - example: ec2 scales uncontrollably due to attack, you get reimbursed
+    - humans warn you if there's a potential attack (Shield Response Team)
+      - You can log tickets with SRT for Proactive Engagement
+    - Integrates with Web Application Firewall
+      - basic WAF fees are included with Shield Advanced
+      - can inject temporary WAF rules to block IPs for instance
+    - can detect some L7 anomalies like header anomalies, geographic anomalies, abnormal URL access like many /admin calls
+    - real time attack visibility
+    - app-specific health checks are used by proactive engagement team
+      - no checks means no proactive engagement
+    - Protection Groups
+      - Simplify managemenyt
+      - can help spot multi-vector attacks
+
+
+=========================
+CloudHSM
+=========================
+
+- Similar to KMS, creates manages and secures cryptographic material
+- true single-tenant Hardware Security Module
+  - as opposed to isolated but somewhat shared KMS infrastructure
+- aws provision it, but it's in tamper-resistant hardware that you control
+- FIPS 140-2 Level 3 compliant (KMS is L2)
+- less AWS-integrated by design
+  - instead access with industry standard APIs
+    - JCE (Java), CNG (M$), PKCS#11
+- KMS can use "Custom Keystore" with CHSM integration
+- multiple in AZs can be configured as a cluster for HA 
+  - stuff is replicated
+- Operates from AWS-managed VPC
+- injects ENIs into your VPCs
+- EC2 software-wise, install AWS CloudHSM Client
+- can't do stuff like S3 SSE because AWS would need to use it. Client-side encryption only
+- can offload SSL/TLS processing efficiently
+- can power Oracle Transparent Data Encryption for DBs
+- good for super strong regulations
+- good for stuff that needs industry standard, non AWS stuff
+- can protect private keys for a certificate authority
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
