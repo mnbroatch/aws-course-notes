@@ -3190,6 +3190,160 @@ CloudHSM
 - can protect private keys for a certificate authority
 
 
+============================
+Web Application Firewawll
+============================
+
+- Compatible with certain products (CF, ALB, APIGW, AppSync)
+- Web Access Control List is configuration unit
+  - These are what you associate with CF Distribution, say
+    - can take time depending on associated service
+      - faster to edit an already-associated one
+  - created in region unless using global service like CF
+    - can't move a regional one to a global one and vice versa
+  - default action is either allow or block
+  - Web ACL Capacity Units
+    - based on complexity of rules
+    - default 1500 max
+    - can be increased with support ticket
+- can block known botnets
+- Has Rules in optional Rule Groups
+  - Rules have
+    - Type
+      - Regular (did something happen)
+      - Rate-based (did something happen a lot)
+    - Statement
+      - WHAT and COUNT, depending on Type
+        - what can be header, cookies, query, ..., body (8192 bytes)
+      - rule can have more than one statement, joind with AND, OR, NOT
+    - Action
+      - BLOCK, ALLOW (not for rate-based), COUNT, CAPTCHA
+      - Custom Response for BLOCKed things, Custom header for ALLOW with x-amzn-waf-
+      - Label internal to WAF, can be used to create multi stage rules
+  - groups can be referenced by many WACLs
+  - define upfront Capacity Units
+- Has Managed Rule Groups such as Bot Control group for heuristically blocking bots
+  - mostly free, some like Bot Control have fees
+- eventbridge can inject ip list rules when ip list changes
+- outputs logs (of all requests) to CW Logs, S3 (5min delay), or firehose
+  - these can generate events that create more rules if badness is detected
+- $5 a month, can be reused
+- $1 per rule
+- $.60 per million requests
+- Bot Control: $10 a month, $1 per million requests
+- Captcha: $.40 per 1000 attempts
+- Account takeover/Fraud Control: $10/m $1/k login attempts
+
+
+============================
+GuardDuty
+============================
+
+- Continuous security monitoring service
+- Analyzes supported data services
+- uses AI & intelligence feeds
+- identifies patterns of what happens normally and detects unexpected and unauthorized activity
+- creates notifications or events
+- supports multiple (MASTER/MEMBER) accounts
+  - MASTER is single location for managing
+
+
+============================
+Inspector
+============================
+
+- Scans EC2 instances, instance OS, and containers for vulnerabilities and non-best-practices
+- runs assessments that last between 15min - 25h
+- provides report of findings
+- Rules packages determine what's checked, 2 main types
+  - Network Assessment
+    - doesn't need agent, though one can help
+    - example: Network Reachability (Network Assessment)
+      - checks reachability end-to-end including load balancers, IGw, VPCs, SGs, VPC Peers, more
+      - RecognizedPortWithListener, RecognizedPortNoListener
+      - RecognizedPortNoAgent
+        - agent required to tell if there's a listener
+      - UnrecognizedPortWithListener
+  - Network & Host Assessment
+    - needs agent
+    - examples
+      - Common Vulnerabilities and Exposures
+      - Center for Internet Security Benchmarks
+      - Security Best Practices (Amazon's opinions)
+
+
+============================
+Macie
+============================
+
+- Data security and privacy service
+- can monitor and protect data in S3
+- findings integrate with Security Hub or might publish event to EventBridge
+  - identifies "bad" policies like public buckets in addition to sensitive data
+- centrally managed via Org or Macie Account Inviting
+- Data Discovery Job
+  - automatically discovers Personally Identifiable Information, Financial Data, etc
+  - runs on schedule
+  - Managed and Custom Identifiers; managed might be Machine Learning, custom might be regex
+    - for regex custom identifier, refiners:
+      - can specify that certain key words need to be x characters away from match
+      - can specify ignore patterns
+
+
+============================
+CloudFormation
+============================
+
+- Template
+  - YAML or JSON
+  - contains logical resources: describe WHAT you want to create
+  - templates create stacks of physical resources
+    - a template can create 1 stack or many, maybe 20 in each region, sky's the limit
+  - if template is changed, stack is changed
+  - once physical resource is create-complete, other logical resources can reference physical resource things like ID
+- Outputs
+  - optional section in template
+  - declare values that you can access via CLI or UI, or via a parent stack when using nesting
+  - can add description to each value
+- Mappings
+  - maps keys to values, allowing lookup
+  - uses !FindInMap to access
+  - can have subkey
+- Template Parameters
+  - accept input when stack is created or updated
+  - can be referenced inside logical parameters
+  - can have defaults, allowed values, values of certain lengths, patterns, type (required, including AWS-specific), and NoEcho for passwords
+- Pseudo Parameters
+  - injected by AWS
+  - examples: AWS::Region, AWS::StackId
+- Conditions
+  - evaluate to TRUE or FALSE
+  - processed before physical resources are created
+  - uses AND IF NOT EQUALS OR
+  - associated with a resource that may or may not be created, depending on evaluation
+    - conditions have names, and resources can reference them by name in their own "Conditions" property
+- DependsOn
+  - CF tries to be efficient
+    - do things in parallel
+    - create dependency tree
+      - references help create this: if an instance references a subnet, it knows it needs a subnet first
+  - DependsOn lets you explicitly define dependencies if needed
+    - one common example is creating and associating to a subnet an Elastic IP
+      - needs IGW attached to the subnet it attaches to
+      - only references subnet, so dependency tree is incomplete because IGW might not be created and attached yet
+        - after all, creating a subnet doesn't require an IGW
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
