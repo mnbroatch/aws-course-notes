@@ -3309,6 +3309,26 @@ CloudFormation
   - maps keys to values, allowing lookup
   - uses !FindInMap to access
   - can have subkey
+- Intrinsic Functions
+  - Fn::Ref
+    - !Ref SomeTemplateParameterOrPseudoParameter
+    - !Ref SomeLogicalResourceName (resolves to a set value like InstanceId)
+  - Fn::GetAtt
+    - !GetAtt LogicalResourceName.PhysicalResourceProperty
+  - Fn::Join, Fn::Split
+    - string manipulation
+  - Fn::GetAZs
+    - gets AZs of region, can specify or use pseudo parameters
+    - might get inconsistent results if you delete default VPC (?)
+  - Fn::Select
+    - often used with GetAZs, picks one of a list by index
+  - Fn::(IF, NOT, AND, OR, EQUALS)
+  - Fn::Base64
+    - good for encoding UserData among other things
+  - Fn::Sub
+    - uses ${LogicalResource.PhysicalResourceProperty} notation
+  - Fn::Cidr
+    - creates smaller cidr ranges from a big one
 - Template Parameters
   - accept input when stack is created or updated
   - can be referenced inside logical parameters
@@ -3332,6 +3352,7 @@ CloudFormation
       - needs IGW attached to the subnet it attaches to
       - only references subnet, so dependency tree is incomplete because IGW might not be created and attached yet
         - after all, creating a subnet doesn't require an IGW
+
 
 
 
