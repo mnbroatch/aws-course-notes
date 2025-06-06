@@ -89,7 +89,7 @@ Distributed Denial Of Service Attacks
   - 3 kinds
     - Network Volumetric
       - Layer 3
-      - Saturate Capactiy with raw network data
+      - Saturate Capacity with raw network data
     - Network Protocol (Transport)
       - Layer 4
       - example: TCP SYN Flood
@@ -3300,6 +3300,7 @@ CloudFormation
   - templates create stacks of physical resources
     - a template can create 1 stack or many, maybe 20 in each region, sky's the limit
   - if template is changed, stack is changed
+  - limit of 500 resources per stack
   - once physical resource is create-complete, other logical resources can reference physical resource things like ID
 - Outputs
   - optional section in template
@@ -3352,6 +3353,149 @@ CloudFormation
       - needs IGW attached to the subnet it attaches to
       - only references subnet, so dependency tree is incomplete because IGW might not be created and attached yet
         - after all, creating a subnet doesn't require an IGW
+  - Signal
+    - can set a number of success signals to wait for, before up to 12 hours
+    - 2 ways to use:
+      - CreationPolicy
+        - defined as property in other logical resource
+        - might provision 3 instances in an ASG that waits for 3 signals, one for each instance
+        - waits to put something in a CREATE_COMPLETE state, until bootstrapping is finished
+        - can recieve a failure signal to fail the provisioning
+      - WaitCondition
+        - defined as its own logical resource
+        - can use DependsOn, other things can DependsOn it
+        - generates a presigned URL for sending signal
+        - can send data from signaler to stack
+        - can be used more generally, signal doesn't need to come from specific resource
+  - Nested Stacks
+    - one way to organize multi stack infrastructure
+    - can go over 500 resource limit
+    - can't usually reference other stacks
+    - parent stack creates nested child stacks
+      - child stack is a logical resource
+      - child stack parameters need to be passed in by parent (or hardcoded, or have default value)
+      - can't reference logical resources of child stack, but can reference output of child stack in parent stack after completion
+      - parent stack can pass that output to later child stacks
+      - can use a reusable template for nested stack with templateURL
+      - only use this if parents and children are to be created, updated, and deleted together
+  - Cross-Stack References
+    - another way to organize multi-stack
+    - good for when you want to use one stack in conjunction with several others, update independently, eg. vpc stack
+    - uses exports
+      - makes outputs visible to other stacks in region
+      - have to have unique name in region
+      - accessed with Fn::ImportValue instead of Ref
+  - DeletionPolicy
+    - by default, physical resource is deleted when logical resource is removed from template
+    - policy allows choosing what action to take: Delete, Retain, or Snapshot (if EBS, Elasticache, Neptune, RDS, Redshift)
+    - you have to clean up your own retained things or snapshots
+    - does not apply to REPLACE actions, only DELETE
+  - cfn-hup
+    - you have to install it
+    - detects changes in resource metadata (files, packages, whatever else), runs configurable actions
+      - action might rerun cfn-init for instance
+  - StackSets
+    - deploy stacks across many accounts and regions
+    - run from an "admin account" (only admin for a StackSet), create resources elsewhere (target accounts)
+    - like containers, contain stack instances (references to stacks elsewhere)
+    - template used is normal template
+    - each created stack is a normal stack
+    - security is handled via roles
+    - can set max concurrent accounts to throttle for service limits or control the rollout slower
+    - failure tolerance: allows some stacks to fail and the stackset to succeed
+    - can set to retain stacks when removed from stackset, deletes by default
+  - Stack Roles
+    - CFN by default uses permissions of logged in identity
+    - CFN can assume role for resource creation permissions
+    - allows role separation so stack creator doesn't need resource creation permissions
+      - allows only chunks of creation at the stack level, no permissions to muck around with resources directly
+      - does need PassRole permmission as well as stack permissions
+  - cfn-init
+    - declarative alternative to imperative user-data
+    - native CFN configuration directives stored in template
+    - InstanceLogicalResource.Metadata['AWS::CloudFormation::Init'] is part of logical resource
+      - contains config keys, maybe configure_wordpress
+        - each has stuff like packages, groups, users, sources, files, commands, services
+        - special one configSets manages the order of the others
+    - idempotent and cross-platformish by design
+    - helper script cfn-init executed via user-data
+  - Change sets
+    - previews of changes to stack based on changes to template
+    - can execute change set
+  - Custom Resources
+    - lets CFN integrate with anything it doesn't support yet
+    - sends data to lambda or SNS, gets data back
+      - lambda would get a CREATE or other event and bucket name or whatever
+    - use cases
+      - deleting objects in bucket when you delete bucket/stack, which usually errors
+        - lambda would get DELETE event and delete objects
+      - get external data for stack to use
+
+
+============================
+DynamoDB
+============================
+
+- NoSQL public database as a service, key/value and Document
+  - Unlike RDS or Aurora, which are database SERVER as a service
+  - actually "DB Table as a service" since table is the base unit of configuration
+- Manually provisioned performance or automatic
+- HA across AZs and optionally global
+- very fast, SSD based
+- Backups, point in time recovery, encryption at rest
+- can configure actions to occur when data changes
+- item max size 400kb
+- no true SQL
+
+- Billing
+  - based on Read Capacity Units, Write Capacity Units, storage, features
+    - every operation has min 1 RCU/WCU
+    - one RCU = 4kb for Strongly Consistent Read, 2kb for Eventually Consistent Read
+    - one WCU = 1kb
+    - burst pool exists as buffer but don't rely on it
+  - cheaper rate available for long term commitments
+
+- Primary Key
+  - Partition and optional Sort Keys (if composite key)
+  - combination of those two things must be unique for each item
+  - all items in a table use the same required propert(y/ies) to make the key
+  - The only things we can query on without throwing away data in filter
+    - can't only query SK
+
+- Backups
+  - on demand
+    - restores
+      - can be cross-region 
+      - can set whether to have indexes
+      - can set encryption settings
+  - point in time
+    - continuous stream of backups in a 35 day window
+
+- Operation Modes
+  - On-Demand
+    - low overhead, good for unknown loads
+  - Provisioned
+
+- Performance
+  - complex queries can use the inefficient scan function
+    - scans whole table for whatever criteria you want
+      - uses many RCUs!
+
+- Consistency
+  - Need to sync between Storage Nodes in all AZs bc resilience/redundancy
+  - One is leader at a time (dynamically)
+    - writes are done to leader and replicated out
+  - reads can be
+    - Strongly Consistent
+      - * this is the 4kb/RCU rate from before
+    - Eventually Consistent
+      - 2kb/RCU rate
+
+
+    
+
+
+
 
 
 
