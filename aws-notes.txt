@@ -3445,6 +3445,7 @@ DynamoDB
 - Backups, point in time recovery, encryption at rest
 - can configure actions to occur when data changes
 - item max size 400kb
+- can only write one thing at a time (10 items = 10 write operations)
 - no true SQL
 
 - Billing
@@ -3486,13 +3487,35 @@ DynamoDB
   - One is leader at a time (dynamically)
     - writes are done to leader and replicated out
   - reads can be
-    - Strongly Consistent
-      - * this is the 4kb/RCU rate from before
     - Eventually Consistent
-      - 2kb/RCU rate
+      - could happen between write and replication
+      - tough luck, you get stale data
+      - some applications can tolerate this edge case, some can't
+        - "is item in stock" can't randomly be slightly wrong sometimes
+    - Strongly Consistent
+      - read from the leader node for current value
+
+- Indexes
+  - 2 kinds
+    - Local Secondary Index
+      - Must be created with table
+      - Max 5 per table
+      - choose different sort key with same partition key
+      - can store all attributes, or you can pick
+      - items without the new sort attribute are omitted
+    - Global Secondary Index
+      - can be created at any time
+      - max 20 per table
+      - choose a new partition and sort key
+      - can store same as above
+      - separate RCU/WCU
+      - drawback: only supports eventual consistency
 
 
-    
+
+
+
+
 
 
 
