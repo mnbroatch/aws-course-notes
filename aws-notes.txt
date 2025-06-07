@@ -3463,6 +3463,12 @@ DynamoDB
   - The only things we can query on without throwing away data in filter
     - can't only query SK
 
+- TTL
+  - select an attribute to use as TTL (epoc seconds)
+  - separate processes mark items expired and delete expired items
+  - possible to have stream of TTL deletions
+    - maybe to power undelete?
+
 - Backups
   - on demand
     - restores
@@ -3511,10 +3517,109 @@ DynamoDB
       - separate RCU/WCU
       - drawback: only supports eventual consistency
 
+- Streams
+  - 24 hour rolling list of time-ordered changes
+  - uses Kinesis behind the scenes
+  - records inserts, updates, deletes
+  - enabled per-table
+  - view types settings determine what exactly is recorded
+    - NEW_IMAGE, OLD_IMAGE, KEYS_ONLY, NEW_AND_OLD_IMAGES
+
+- Triggers
+  - when an event is added to a stream, an event is generated and an action can occur (lambda)
+  - good for aggregation, reporting, messaging, more
+
+- Global Tables
+  - multi-master (no master) cross-region replication
+  - contains tables called Replica Tables configured for replication
+  - usually sub-second replication
+  - last writer wins
+  - mostly only eventual consistency
+  - strongly consistent reads available in same region as writes
+    - example use case: local strong consistency to log in, eventual for global record of logins
+    - basically there are some operations where user is always going to be using one region
+
+- DynamoDb Accelerator (DAX)
+  - efficient cache layer for DynamoDb
+  - simplifies caching
+  - unlike DynamoDb itself, is deployed within VPC, not public
+  - deployed across AZs as a regional service
+    - one AZ's node is the primary, replicates out
+      - primary node changes on failover
+  - has query cache and also item cache, can retrieve cached items directly
+  - supports write-through caching for item cache
+  - can scale vertically or horizontally
 
 
+============================
+Athena
+============================
+
+- ad-hoc queries on S3 data
+- can query data in formats such as AWS logs, Glue Data Catalogs, CSV, JSON, others
+- can query non-S3 things using lambda with Athena Federated Query feature
+- make schema and get that format as query result
+- schema only applied at query time
+- original data not changed, new tables not created
+  - so fairly inefficient, but can scan only certain "folders" and has optimizations in place
+- can send that data to other services
+- good for sporadic use where you don't want to plan queries in advance
+- pay only for data consumed
 
 
+============================
+Elasticache
+============================
+
+- in-memory db for high-level read-heavy performance requirements
+- more customizable behavior than DAX
+  - can use non-dynamo dbs, cache non-dynamo data
+- managed Redis or Memcached
+  - Over Memcached, Redis supports
+    - more complex data structures (lists, etc.)
+    - Multi-AZ replication
+    - backup & restore
+    - transactions
+  - Memcached is multithreaded for better concurrency
+- good for session data
+  - better than storing on one instance
+  - fast (potentially read on every page load), simple reads, high concurrency
+  - managed, HA
+- needs application changes, since the application needs to fetch data on cache miss (and cache it)
+
+
+============================
+Redshift
+============================
+
+- Petabyte scale data warehouse
+- for long-term data collection / analysis
+- column-based unlike RDS, helps with data analysis
+- other dbs can pump data into it
+- sql-like queries
+- provisioned not managed, uses cluster of servers
+- one AZ in a VPC 
+- you interact with leader node, which coordinates with compute nodes to run query
+- integrates with CW monitoring, IAM, KMS
+- can do more custom routing stuff with enhanced vpc routing
+
+- Redshift Spectrum
+  - query data directly in S3
+  - still needs RS cluster 
+  - plays with rest of redshift better than athena
+  - good for combining redshift + S3 data
+
+- Federated Query
+  - query data from (some) other sources using its connectors
+
+- Backups
+  - can use automatic s3 snapshots
+    - incremental
+    - every 8 hours or 5gb of data
+    - 1 day retention default, up to 35
+  - manual s3 snapshots too
+  - restoring s3 snapshots creates new cluster
+  - can copy snapshots to other regions
 
 
 
