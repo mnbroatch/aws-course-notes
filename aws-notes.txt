@@ -3622,18 +3622,58 @@ Redshift
   - can copy snapshots to other regions
 
 
+==============
+Comprehend
+==============
+
+- Natural Language Processing service
+- input document, output analyzed metadata like keywords, personal information, and sentiment
+- uses pre-trained or custom models
+- realtime for small workloads, async for large
 
 
+==============
+Kendra
+==============
+
+- Intelligent search service
+- mimics talking to human
+- takes data source like s3, confluence, web crawler, etc
+- turns the data into an index that organizes it efficiently
+  - syncs on a schedule
+- integrates with IAM, other AWS services
+- backend service that apis deal with, not much through console
 
 
+==============
+Lex
+==============
+
+- backend service
+- text or voice conversational interfaces
+- powers alexa
+- speech to text
+- Natural Language Understanding - understands intent
+- scales well
+- pay as you go
+- chatbots, etc
+- bots converse in 1+ languages
+- utterances: ways in which an intent might be said
+  - "lemme get", "i want", etc for ordering food, say
+- lambda is attached to intent to fulfil request
+- slots are like parameters for intent, like pizza toppings
 
 
+==============
+Polly
+==============
 
-
-
-
-
-
+- text to speech
+- standard or neural TTS
+  - neural uses vocoder (quaint, no?), more computationally heavy than standard
+- outputs mpg, ogg, pcm, more
+- doesn't translate but supports multiple languages
+- Speech Synthesis Markup Language for emphasis, pronunciation, other
 
 
 
