@@ -2731,6 +2731,16 @@ Lambda@Edge
     - origin migration, high DPI versions, country specific content: modify origin request
 
 
+==============
+Local Zones
+==============
+
+- subnet can be extended beyond parent region to include local zones closer to business for faster speeds,  esp. w/ direct connect
+- certain things like EBS snapshot rely on parent region
+- like having an AZ closer to you
+- not all AWS products support them, usually limitations
+
+
 ============================
 AWS Certificate Manager
 ============================
@@ -3676,18 +3686,79 @@ Polly
 - Speech Synthesis Markup Language for emphasis, pronunciation, other
 
 
+==============
+Rekognition
+==============
+
+- deep learning video and image analysis
+- identifies things, even faces, can also do pathing
+- pay per image or per minute of video
+- can do live video with kinesis
 
 
+==============
+Textract
+==============
+
+- detect and analyze text in input documents
+  - jpg, pdf, png, tiff
+- outputs text, structure, some analysis
+- can put pieces of text together, such as items on a reciept
+- can extract data from document
+- metadata like "this is a receipt"
+- can abstract fields (for instance, make both receipt # and DL# "documentId")
 
 
+==============
+Transcribe
+==============
+
+- Automatic Speech Recognition service
+- inputs audio, outputs text
+- language customization, filters for privacy, censoring, speaker identification
+- can build custom vocabularies
+- good for searching through audio text, subtitles, call analytics, more
+- can use APIs or it can hook directly to other AWS ML services
+- pay per second of audio transcribed
 
 
+==============
+Translate
+==============
+
+- encodes to semantic representation and decodes to target language
+- can auto detect source language
 
 
+==============
+Forecast
+==============
+
+- extrapolates future trends from time-series data
 
 
+==============
+Fraud Detector
+==============
+
+- Upload historical data, detect fraud with ML
+- Different models
+  - Online Fraud: little historical data, looks at new accounts
+  - Transaction Fraud: there is a history of payments for customer or whatever
+  - Account Takeover: did account start doing weird things suddenly
+- events are given scores, can react to them
 
 
+==============
+SageMaker
+==============
+
+- Fully managed ML service
+- fetch, clean, prepare, train, evaluate, deploy, monitor/collect
+- SageMaker Studio - IDE for ML
+- SageMaker Domain - Isolation, makes EFS Volume, Users, Apps, Policies, VPCs for SM Project
+- manage containers for ML instances, hosting for them
+- no cost for SM, but yes cost for resources it creates
 
 
 
